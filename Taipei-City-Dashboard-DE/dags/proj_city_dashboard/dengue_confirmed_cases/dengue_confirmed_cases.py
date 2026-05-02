@@ -47,7 +47,7 @@ def _transfer(**kwargs):
         '血清型': 'serotype',
     })
 
-    df = df[df['residence_city'].str.contains('台北|臺北', na=False)]
+    df = df[df['residence_city'].isin(['台北市', '臺北市', '新北市'])]
 
     df = df[
         (df['lng'].notna()) & (df['lng'] != '') &

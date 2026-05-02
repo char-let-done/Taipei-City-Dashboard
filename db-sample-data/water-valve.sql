@@ -29,6 +29,11 @@ CREATE INDEX IF NOT EXISTS water_valve_wkb_geometry_idx
 CREATE INDEX IF NOT EXISTS water_valve_install_date_idx
     ON public.water_valve (install_date);
 
+CREATE OR REPLACE VIEW public.water_valve_map AS
+SELECT *
+FROM public.water_valve
+WHERE valve_age_years IS NOT NULL;
+
 INSERT INTO public.components ("index", name)
 VALUES ('water_valve', '自來水系統閥類')
 ON CONFLICT ("index") DO UPDATE SET name = EXCLUDED.name;
@@ -45,58 +50,64 @@ SET color = EXCLUDED.color,
     types = EXCLUDED.types,
     unit = EXCLUDED.unit;
 
-DELETE FROM public.component_maps WHERE "index" = 'water_valve';
+DELETE FROM public.component_maps WHERE "index" IN ('water_valve', 'water_valve_map');
 
 INSERT INTO public.component_maps ("index", title, type, source, size, icon, paint, property)
 VALUES (
-    'water_valve',
+    'water_valve_map',
     '自來水系統閥類',
-    'circle',
+    'heatmap',
     'api',
     NULL,
     NULL,
     '{
-        "circle-radius": [
+        "heatmap-weight": [
+            "interpolate",
+            ["linear"],
+            ["to-number", ["get", "valve_age_years"]],
+            0, 0.18,
+            10, 0.26,
+            25, 0.42,
+            50, 0.66,
+            80, 0.86,
+            100, 1
+        ],
+        "heatmap-intensity": [
             "interpolate",
             ["linear"],
             ["zoom"],
-            10, 2,
-            14, [
-                "interpolate",
-                ["linear"],
-                ["to-number", ["get", "diameter"]],
-                0, 3,
-                100, 4,
-                300, 6,
-                800, 9
-            ],
-            17, [
-                "interpolate",
-                ["linear"],
-                ["to-number", ["get", "diameter"]],
-                0, 5,
-                100, 7,
-                300, 10,
-                800, 15
-            ]
+            10, 0.55,
+            14, 0.95,
+            16, 1.3
         ],
-        "circle-color": [
-            "case",
-            ["==", ["get", "valve_age_years"], null], "#8F98A3",
-            [
-                "interpolate",
-                ["linear"],
-                ["to-number", ["get", "valve_age_years"]],
-                0, "#D9F5D6",
-                10, "#A9E7A1",
-                25, "#66C86B",
-                50, "#2F9E44",
-                80, "#0B5D1E"
-            ]
+        "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0, "rgba(36,176,221,0)",
+            0.18, "#24B0DD",
+            0.38, "#56B96D",
+            0.62, "#F8CF58",
+            0.82, "#ED6A45",
+            1, "#AF4137"
         ],
-        "circle-opacity": 0.82,
-        "circle-stroke-color": "#ffffff",
-        "circle-stroke-width": 0.7
+        "heatmap-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10, 10,
+            12, 18,
+            14, 30,
+            16, 44
+        ],
+        "heatmap-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10, 0.68,
+            15, 0.84,
+            17, 0.58
+        ]
     }'::json,
     '[
         {"key":"valve_no","name":"閥類編號"},
@@ -138,7 +149,7 @@ INSERT INTO public.query_charts (
 VALUES (
     'water_valve',
     NULL,
-    ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'water_valve' ORDER BY id DESC LIMIT 1)],
+    ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'water_valve_map' ORDER BY id DESC LIMIT 1)],
     '{"mode":"byLayer"}',
     'static',
     NULL,
