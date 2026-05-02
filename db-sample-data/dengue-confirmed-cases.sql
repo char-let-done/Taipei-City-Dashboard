@@ -50,7 +50,7 @@ INSERT INTO public.component_charts ("index", color, types, unit)
 VALUES (
     'dengue_confirmed_cases',
     ARRAY['#ED6A45', '#F8CF58', '#56B96D', '#24B0DD', '#E170A6', '#AF4137'],
-    ARRAY['TimelineSeparateChart', 'BarChart'],
+    ARRAY['TimelineStackedChart'],
     '例'
 )
 ON CONFLICT ("index") DO UPDATE
@@ -128,13 +128,19 @@ VALUES
     NOW(),
     NOW(),
     'time',
-    'SELECT
-        DATE_TRUNC(''month'', TO_DATE(diagnosis_date, ''YYYY/MM/DD'')) AS x_axis,
-        SUM(confirmed_cases)::float AS data
-    FROM public.dengue_confirmed_cases
-    WHERE diagnosis_date IS NOT NULL AND diagnosis_date != ''''
-        AND residence_city IN (''台北市'', ''臺北市'')
-    GROUP BY DATE_TRUNC(''month'', TO_DATE(diagnosis_date, ''YYYY/MM/DD''))
+    'WITH parsed AS (
+        SELECT
+            DATE_TRUNC(''month'', TO_DATE(diagnosis_date, ''YYYY/MM/DD'')) AS x_axis,
+            CASE residence_city WHEN ''台北市'' THEN ''臺北市'' ELSE residence_city END AS y_axis,
+            confirmed_cases
+        FROM public.dengue_confirmed_cases
+        WHERE diagnosis_date IS NOT NULL AND diagnosis_date != ''''
+            AND residence_city IN (''台北市'', ''臺北市'')
+    )
+    SELECT x_axis, y_axis, SUM(confirmed_cases)::float AS data
+    FROM parsed
+    WHERE x_axis >= (SELECT MAX(x_axis) FROM parsed) - INTERVAL ''12 months''
+    GROUP BY x_axis, y_axis
     ORDER BY x_axis',
     NULL,
     'taipei'
@@ -157,13 +163,19 @@ VALUES
     NOW(),
     NOW(),
     'time',
-    'SELECT
-        DATE_TRUNC(''month'', TO_DATE(diagnosis_date, ''YYYY/MM/DD'')) AS x_axis,
-        SUM(confirmed_cases)::float AS data
-    FROM public.dengue_confirmed_cases
-    WHERE diagnosis_date IS NOT NULL AND diagnosis_date != ''''
-        AND residence_city IN (''台北市'', ''臺北市'', ''新北市'')
-    GROUP BY DATE_TRUNC(''month'', TO_DATE(diagnosis_date, ''YYYY/MM/DD''))
+    'WITH parsed AS (
+        SELECT
+            DATE_TRUNC(''month'', TO_DATE(diagnosis_date, ''YYYY/MM/DD'')) AS x_axis,
+            CASE residence_city WHEN ''台北市'' THEN ''臺北市'' ELSE residence_city END AS y_axis,
+            confirmed_cases
+        FROM public.dengue_confirmed_cases
+        WHERE diagnosis_date IS NOT NULL AND diagnosis_date != ''''
+            AND residence_city IN (''台北市'', ''臺北市'', ''新北市'')
+    )
+    SELECT x_axis, y_axis, SUM(confirmed_cases)::float AS data
+    FROM parsed
+    WHERE x_axis >= (SELECT MAX(x_axis) FROM parsed) - INTERVAL ''12 months''
+    GROUP BY x_axis, y_axis
     ORDER BY x_axis',
     NULL,
     'metrotaipei'
