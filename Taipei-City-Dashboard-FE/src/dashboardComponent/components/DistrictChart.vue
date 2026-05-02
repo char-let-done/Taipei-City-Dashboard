@@ -12,6 +12,7 @@ const props = defineProps([
 	"map_config",
 	"map_filter",
 	"map_filter_on",
+	"is_composite",
 ]);
 
 const emits = defineEmits([
@@ -288,7 +289,10 @@ function handleDataSelection(index) {
     v-if="activeChart === 'DistrictChart'"
     class="districtchart"
   >
-    <div class="districtchart-title">
+    <div
+      v-if="!is_composite"
+      class="districtchart-title"
+    >
       <h5>總合</h5>
       <h6>{{ districtData.sum }} {{ chart_config.unit }}</h6>
       <div class="districtchart-title-legend">

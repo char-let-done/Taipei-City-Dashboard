@@ -37,7 +37,7 @@ VALUES
     '台北環保餐廳',
     'circle',
     'geojson',
-    '{"circle-color":"#4caf50","circle-radius":1.2,"circle-opacity":0.85,"circle-stroke-color":"#2e7d32","circle-stroke-width":0.3}',
+    '{"circle-color":"#4caf50","circle-radius":3,"circle-opacity":0.85,"circle-stroke-color":"#2e7d32","circle-stroke-width":0.5}',
     '[{"key":"name","name":"餐廳名稱"},{"key":"district","name":"行政區"},{"key":"category","name":"餐廳類別"},{"key":"tel","name":"電話"},{"key":"address","name":"地址"},{"key":"eco_actions","name":"額外環保作為"}]'
 ),
 (
@@ -45,7 +45,7 @@ VALUES
     '新北環保餐廳',
     'circle',
     'geojson',
-    '{"circle-color":"#66bb6a","circle-radius":1.2,"circle-opacity":0.85,"circle-stroke-color":"#388e3c","circle-stroke-width":0.3}',
+    '{"circle-color":"#66bb6a","circle-radius":3,"circle-opacity":0.85,"circle-stroke-color":"#388e3c","circle-stroke-width":0.5}',
     '[{"key":"name","name":"餐廳名稱"},{"key":"district","name":"行政區"},{"key":"category","name":"餐廳類別"},{"key":"tel","name":"電話"},{"key":"address","name":"地址"},{"key":"eco_actions","name":"額外環保作為"}]'
 );
 
