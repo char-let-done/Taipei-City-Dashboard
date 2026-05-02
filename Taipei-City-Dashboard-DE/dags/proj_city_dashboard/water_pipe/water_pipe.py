@@ -6,6 +6,7 @@ def _transfer(**kwargs):
     import gzip
     import io
     import xml.etree.ElementTree as ET
+    from urllib.parse import quote, urlencode
 
     import geopandas as gpd
     import pandas as pd
@@ -39,6 +40,14 @@ def _transfer(**kwargs):
         "https://data.taipei/api/dataset/"
         "af167303-0e5f-45dd-b624-a01f541565ce/resource/{resource_id}/download"
     )
+    ntpc_proxy_url = "https://roadmt.maintenance.ntpc.gov.tw/PMSProxy/proxy.ashx?"
+    ntpc_arcgis_query_url = (
+        "https://gis1.ntpc.gov.tw/gis/rest/services/PW/NewAllFac/MapServer/3/query"
+    )
+    ntpc_headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://roadmt.maintenance.ntpc.gov.tw/iROAD",
+    }
 
     field_map = {
         "類別碼": "category_code",
@@ -118,10 +127,71 @@ def _transfer(**kwargs):
             if pos_list and values:
                 geometry = geometry_from_pos_list(pos_list)
                 if geometry is not None:
+                    values["source_city"] = "taipei"
                     values["source_resource_id"] = source_resource_id
                     values["geometry"] = geometry
                     records.append(values)
             elem.clear()
+        return records
+
+    def fetch_ntpc_water_pipe_records():
+        records = []
+        result_offset = 0
+        page_size = 1000
+
+        while True:
+            params = {
+                "f": "json",
+                "where": "CC like'8030101'",
+                "returnGeometry": "true",
+                "outFields": "*",
+                "outSR": "4326",
+                "resultOffset": result_offset,
+                "resultRecordCount": page_size,
+            }
+            query = urlencode(params, quote_via=quote)
+            url = ntpc_proxy_url + ntpc_arcgis_query_url + "?" + query
+            response = requests.get(
+                url,
+                headers=ntpc_headers,
+                proxies=proxies,
+                timeout=300,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if payload.get("error"):
+                raise ValueError(f"New Taipei ArcGIS query failed: {payload['error']}")
+
+            features = payload.get("features", [])
+            for feature in features:
+                attrs = feature.get("attributes") or {}
+                geometry = feature.get("geometry") or {}
+                paths = geometry.get("paths") or []
+                for path_index, path in enumerate(paths):
+                    coords = [(point[0], point[1]) for point in path if len(point) >= 2]
+                    if len(coords) < 2:
+                        continue
+                    pipe_uid = attrs.get("Sys_Key")
+                    if len(paths) > 1:
+                        pipe_uid = f"{pipe_uid}_{path_index + 1}"
+                    records.append(
+                        {
+                            "source_city": "newtaipei",
+                            "source_resource_id": "ntpc_new_all_fac_mapserver_3",
+                            "category_code": attrs.get("CategCode"),
+                            "pipe_uid": pipe_uid,
+                            "manager": attrs.get("Organ"),
+                            "data_status": attrs.get("Correction"),
+                            "time_position": attrs.get("MendTime"),
+                            "substance": "自來水",
+                            "geometry": LineString(coords),
+                        }
+                    )
+
+            if not payload.get("exceededTransferLimit") or len(features) < page_size:
+                break
+            result_offset += page_size
+
         return records
 
     rows = []
@@ -145,6 +215,8 @@ def _transfer(**kwargs):
         )
         rows.extend(parse_records(stream, resource_id))
 
+    rows.extend(fetch_ntpc_water_pipe_records())
+
     if not rows:
         raise ValueError("Water pipe XML resources returned no pipe records.")
 
@@ -153,17 +225,29 @@ def _transfer(**kwargs):
         if col in data.columns:
             data[col] = pd.to_numeric(data[col], errors="coerce")
 
-    data = data[data["diameter_width"] > 400]
+    data = data[
+        (data["source_city"] == "newtaipei")
+        | (data["diameter_width"] > 400)
+    ]
 
     data["data_time"] = get_tpe_now_time_str(is_with_tz=True)
     data["segment_id"] = range(1, len(data) + 1)
 
-    gdata = gpd.GeoDataFrame(data, geometry="geometry", crs="EPSG:3826")
-    gdata = convert_geometry_to_wkbgeometry(gdata, from_crs=3826, to_crs=4326)
+    taipei_data = data[data["source_city"] == "taipei"].copy()
+    ntpc_data = data[data["source_city"] == "newtaipei"].copy()
+    frames = []
+    if not taipei_data.empty:
+        taipei_gdata = gpd.GeoDataFrame(taipei_data, geometry="geometry", crs="EPSG:3826")
+        frames.append(convert_geometry_to_wkbgeometry(taipei_gdata, from_crs=3826, to_crs=4326))
+    if not ntpc_data.empty:
+        ntpc_gdata = gpd.GeoDataFrame(ntpc_data, geometry="geometry", crs="EPSG:4326")
+        frames.append(convert_geometry_to_wkbgeometry(ntpc_gdata, from_crs=4326, to_crs=4326))
+    gdata = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), geometry="geometry", crs="EPSG:4326")
 
     columns = [
         "data_time",
         "segment_id",
+        "source_city",
         "source_resource_id",
         "category_code",
         "pipe_uid",
