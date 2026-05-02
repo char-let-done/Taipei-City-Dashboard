@@ -87,7 +87,10 @@
             />
           </template>
         </div>
-        <div v-else>
+        <div
+          v-else
+          class="mappopup-textfield"
+        >
           <h3>{{ item.name }}</h3>
           <p>{{ popupContent[activeTab]?.properties[item.key] }}</p>
         </div>
@@ -115,6 +118,7 @@
 
 .mapboxgl-popup-content {
 	padding: 0 !important;
+	overflow: visible !important;
 	border: solid 1px var(--color-border);
 	box-shadow: 0px 0px 10px rgb(35, 35, 35) !important;
 	border-radius: 5px !important;
@@ -150,7 +154,7 @@
 }
 
 .mappopup {
-	max-height: 200px;
+	max-height: none;
 	padding: 10px;
 	overflow-y: scroll;
 

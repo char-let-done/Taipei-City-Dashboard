@@ -19,6 +19,7 @@ export const chartTypes = {
 	SpeedometerChart: "儀表板圖",
 	IndicatorChart: "指標圖",
 	MapLegend: "地圖圖例",
+	WholesaleSupplyChainMap: "市場供應鏈地圖",
 	TextUnitChart: "文字單位圖",
 	SportsVenueCapacityChart: "運動中心容量圖",
 };
@@ -45,6 +46,7 @@ export const chartsPerDataType = {
 		"PolarAreaChart",
 		"TextUnitChart",
 		"TreemapChart",
+		"WholesaleSupplyChainMap",
 	],
 	time: ["TimelineSeparateChart", "TimelineStackedChart", "DengueTrendChart", "ColumnLineChart"],
 	percent: [

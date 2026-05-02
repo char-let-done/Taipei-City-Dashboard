@@ -10,7 +10,6 @@ MOA_API_KEY = os.getenv("MOA_API_KEY", "").strip()
 
 
 def _transfer(**kwargs):
-    import json
     import urllib3
     import pandas as pd
     import requests
@@ -41,8 +40,8 @@ def _transfer(**kwargs):
     while True:
         resp = session.get(
             f"{MOA_API_BASE}/CASProductInquiryType/",
-            params={"api_key": MOA_API_KEY, "limit": 1000, "offset": offset},
-            timeout=60,
+            params={"api_key": MOA_API_KEY, "limit": 2000, "offset": offset},
+            timeout=120,
             verify=False,
         )
         resp.raise_for_status()
@@ -59,12 +58,8 @@ def _transfer(**kwargs):
     now_str = get_tpe_now_time_str(is_with_tz=True)
     df = pd.DataFrame(all_records)
     df["material_name"] = df.get("Material_Name", pd.Series(dtype=str))
-    df["raw_data"] = df.apply(
-        lambda row: json.dumps(row.to_dict(), ensure_ascii=False, default=str),
-        axis=1,
-    )
     df["data_time"] = now_str
-    ready_data = df[["material_name", "raw_data", "data_time"]]
+    ready_data = df[["material_name", "data_time"]]
 
     engine = create_engine(ready_data_db_uri)
     save_dataframe_to_postgresql(

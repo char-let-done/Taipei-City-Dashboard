@@ -23,6 +23,7 @@ export const chartTypes: chartType = {
 	SpeedometerChart: "儀表板圖", // 暫時不用
 	IndicatorChart: "指標圖", // V
 	MapLegend: "地圖圖例", // V
+	WholesaleSupplyChainMap: "市場供應鏈地圖",
 	TextUnitChart: "文字數值圖", // V
 	WaterQualityChart: "水質指標圖",
 	SportsVenueCapacityChart: "運動中心容量圖",

@@ -35,20 +35,25 @@ def _transfer(**kwargs):
     load_behavior = dag_infos.get("load_behavior")
     default_table = dag_infos.get("ready_data_default_table")
 
+    TAIPEI_KEYWORDS = ("臺北", "台北", "新北")
+
     session = requests.Session()
     all_records = []
     offset = 0
     while True:
         resp = session.get(
             f"{MOA_API_BASE}/SalesResumeAgriproductsResultsType/",
-            params={"api_key": MOA_API_KEY, "limit": 1000, "offset": offset},
-            timeout=60,
+            params={"api_key": MOA_API_KEY, "limit": 2000, "offset": offset},
+            timeout=120,
             verify=False,
         )
         resp.raise_for_status()
         data = resp.json()
         batch = data.get("Data", [])
-        all_records.extend(batch)
+        for r in batch:
+            loc = r.get("SamplingLocation") or ""
+            if any(k in loc for k in TAIPEI_KEYWORDS):
+                all_records.append(r)
         if not data.get("Next") or not batch:
             break
         offset += len(batch)
