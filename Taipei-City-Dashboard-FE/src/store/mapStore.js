@@ -441,6 +441,7 @@ export const useMapStore = defineStore("map", {
 					},
 				);
 			});
+			this.addWholesaleDepotMapIcon();
 			// 預載 3D 模型給 3D Mrt Map
 			const models = [
 				{ id: "mrt_car_c381", url: "/images/map/mrt_car_c381.glb" },
@@ -471,6 +472,34 @@ export const useMapStore = defineStore("map", {
 
 			// 全部載入完畢才變 false
 			this.isPreloading = false;
+		},
+		// 3b. 批發市場圖示（程式繪製，避免額外靜態檔；對應 layout key symbol-wholesale_depot）
+		addWholesaleDepotMapIcon() {
+			if (!this.map || this.map.hasImage("wholesale_depot")) return;
+			const size = 128;
+			const c = document.createElement("canvas");
+			c.width = size;
+			c.height = size;
+			const ctx = c.getContext("2d");
+			if (!ctx) return;
+			ctx.clearRect(0, 0, size, size);
+			ctx.fillStyle = "#1E8449";
+			ctx.fillRect(22, 52, 84, 58);
+			ctx.fillStyle = "#27AE60";
+			ctx.beginPath();
+			ctx.moveTo(14, 52);
+			ctx.lineTo(64, 16);
+			ctx.lineTo(114, 52);
+			ctx.closePath();
+			ctx.fill();
+			ctx.fillStyle = "#145A32";
+			ctx.fillRect(50, 76, 28, 34);
+			ctx.fillStyle = "#A9DFBF";
+			ctx.fillRect(32, 62, 16, 12);
+			ctx.fillRect(80, 62, 16, 12);
+			this.map.addImage("wholesale_depot", ctx.getImageData(0, 0, size, size), {
+				pixelRatio: 1,
+			});
 		},
 		// 4. Toggle district boundaries
 		toggleDistrictBoundaries(status) {
@@ -957,9 +986,10 @@ export const useMapStore = defineStore("map", {
 			paintSettings["arc-color"] = paintSettings["arc-color"]
 				? paintSettings["arc-color"]
 				: ["#ffffff"];
-			// formatted data
+			// formatted data（id 須含 city，否則雙北 deck.gl 圖層 id 重複會無法隨城市切換）
 			const layerConfig = {
-				id: map_config.index,
+				id: mapLayerId,
+				visible: true,
 				data: data.features,
 				getSourcePosition: (d) => d.geometry.coordinates[0],
 				getTargetPosition: (d) => d.geometry.coordinates[1],
@@ -1012,20 +1042,24 @@ export const useMapStore = defineStore("map", {
 		// 4-2-2. Render DeckGL Layer
 		// Developed by Weeee Chill, Taipei Codefest 2024
 		renderDeckGLLayer() {
-			const layers = Object.keys(this.deckGlLayer).map((index) => {
-				const l = this.deckGlLayer[index];
-				switch (l.type) {
-				case "ArcLayer":
-					return new ArcLayer(l.config);
-				case "AnimatedArcLayer":
-					return new AnimatedArcLayer({
-						...l.config,
-						coef: this.step / 1000,
-					});
-				default:
-					break;
-				}
-			});
+			const layers = Object.keys(this.deckGlLayer)
+				.map((index) => {
+					const l = this.deckGlLayer[index];
+					const visible = l.config.visible !== false;
+					switch (l.type) {
+					case "ArcLayer":
+						return new ArcLayer({ ...l.config, visible });
+					case "AnimatedArcLayer":
+						return new AnimatedArcLayer({
+							...l.config,
+							visible,
+							coef: this.step / 1000,
+						});
+					default:
+						return null;
+					}
+				})
+				.filter(Boolean);
 			this.overlay.setProps({
 				layers,
 			});
@@ -2025,7 +2059,9 @@ export const useMapStore = defineStore("map", {
 		//  5. Turn on the visibility for a exisiting map layer
 		turnOnMapLayerVisibility(mapLayerId) {
 			if (mapLayerId.indexOf("-arc") !== -1) {
-				this.deckGlLayer[mapLayerId].config.visible = true;
+				const entry = this.deckGlLayer[mapLayerId];
+				if (!entry) return;
+				entry.config.visible = true;
 				this.step = 1;
 				this.currentVisibleLayers.push(mapLayerId);
 				this.renderDeckGLLayer();
@@ -2080,8 +2116,11 @@ export const useMapStore = defineStore("map", {
 					(el) => el !== mapLayerId,
 				);
 				if (mapLayerId.indexOf("-arc") !== -1) {
-					this.deckGlLayer[mapLayerId].config.visible = false;
-					this.renderDeckGLLayer();
+					const arcEntry = this.deckGlLayer[mapLayerId];
+					if (arcEntry) {
+						arcEntry.config.visible = false;
+						this.renderDeckGLLayer();
+					}
 				} else if (this.map.getLayer(mapLayerId)) {
 					this.map.setFilter(mapLayerId, null);
 					this.map.setLayoutProperty(
@@ -2631,7 +2670,10 @@ export const useMapStore = defineStore("map", {
 			map_configs.map((map_config) => {
 				let mapLayerId = `${map_config.index}-${map_config.type}-${map_config.city}`;
 				if (map_config.title !== xParam) {
-					if (map_config.type === "arc" && this.deckGlLayer[mapLayerId]) {
+					if (
+						map_config.type === "arc" &&
+						this.deckGlLayer[mapLayerId]
+					) {
 						this.deckGlLayer[mapLayerId].config.data = [];
 						this.renderDeckGLLayer();
 					} else {
@@ -2662,7 +2704,12 @@ export const useMapStore = defineStore("map", {
 			if (!this.map || dialogStore.dialogs.moreInfo) return;
 			map_configs.map((map_config) => {
 				let mapLayerId = `${map_config.index}-${map_config.type}-${map_config.city}`;
-				if (!map_config.title.includes(layerName)) return;
+				const matchesLayerName =
+					map_config.type === "arc"
+						? map_config.title === layerName ||
+							map_config.index === layerName
+						: map_config.title.includes(layerName);
+				if (!matchesLayerName) return;
 				if (map_config.type === "arc" && this.deckGlLayer[mapLayerId]) {
 					this.deckGlLayer[mapLayerId].config.data = visible
 						? this.deckGlLayer[mapLayerId].data
@@ -2686,9 +2733,11 @@ export const useMapStore = defineStore("map", {
 			map_configs.map((map_config) => {
 				let mapLayerId = `${map_config.index}-${map_config.type}-${map_config.city}`;
 				if (map_config && map_config.type === "arc") {
-					this.deckGlLayer[mapLayerId].config.data =
-						this.deckGlLayer[mapLayerId].data;
-					this.renderDeckGLLayer();
+					const arc = this.deckGlLayer[mapLayerId];
+					if (arc) {
+						arc.config.data = arc.data;
+						this.renderDeckGLLayer();
+					}
 					return;
 				}
 				this.map.setFilter(mapLayerId, null);
@@ -2703,8 +2752,8 @@ export const useMapStore = defineStore("map", {
 			map_configs.map((map_config) => {
 				let mapLayerId = `${map_config.index}-${map_config.type}-${map_config.city}`;
 				if (map_config.type === "arc" && this.deckGlLayer[mapLayerId]) {
-					this.deckGlLayer[mapLayerId].config.data =
-						this.deckGlLayer[mapLayerId].data;
+					const arc = this.deckGlLayer[mapLayerId];
+					arc.config.data = arc.data;
 					this.renderDeckGLLayer();
 				} else {
 					this.map.setLayoutProperty(mapLayerId, "visibility", "visible");

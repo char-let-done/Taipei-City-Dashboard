@@ -20,6 +20,7 @@ import RadarChart from "./components/RadarChart.vue";
 import TimelineSeparateChart from "./components/TimelineSeparateChart.vue";
 import TimelineStackedChart from "./components/TimelineStackedChart.vue";
 import MapLegend from "./components/MapLegend.vue";
+import WholesaleSupplyChainMap from "./components/WholesaleSupplyChainMap.vue";
 import MetroChart from "./components/MetroChart.vue";
 import HeatmapChart from "./components/HeatmapChart.vue";
 import PolarAreaChart from "./components/PolarAreaChart.vue";
@@ -193,6 +194,8 @@ function returnChartComponent(name, svg) {
 		return svg ? BarChartSvg : BarChart;
 	case "MapLegend":
 		return svg ? MapLegendSvg : MapLegend;
+	case "WholesaleSupplyChainMap":
+		return svg ? MapLegendSvg : WholesaleSupplyChainMap;
 	case "MetroChart":
 		return svg ? MetroChartSvg : MetroChart;
 	case "TimelineSeparateChart":

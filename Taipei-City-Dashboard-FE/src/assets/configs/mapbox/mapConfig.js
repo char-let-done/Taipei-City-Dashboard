@@ -433,6 +433,21 @@ export const maplayerCommonLayout = {
 	"symbol-triangle_green": {
 		"icon-image": "triangle_green",
 	},
+	/** 批發市場：倉儲圖示；略大於預設 symbol，避免過大遮擋 */
+	"symbol-wholesale_depot": {
+		"icon-image": "wholesale_depot",
+		"icon-size": [
+			"interpolate",
+			["linear"],
+			["zoom"],
+			11.99,
+			0.28,
+			14,
+			0.52,
+			22,
+			0.78,
+		],
+	},
 	"symbol-triangle_white": {
 		"icon-image": "triangle_white",
 	},
