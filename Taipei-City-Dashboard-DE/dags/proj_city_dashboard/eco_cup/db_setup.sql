@@ -6,14 +6,12 @@
 -- --------------------------------------------------------
 -- 1. components: Register the component
 -- --------------------------------------------------------
-INSERT INTO public.components (id, index, name)
+INSERT INTO public.components (index, name)
 VALUES (
-    300,
     'eco_cup_store',
     '循環杯友善據點'
 )
-ON CONFLICT (id) DO UPDATE SET
-    index = EXCLUDED.index,
+ON CONFLICT (index) DO UPDATE SET
     name = EXCLUDED.name;
 
 
@@ -90,6 +88,10 @@ ON CONFLICT (id) DO UPDATE SET
 -- --------------------------------------------------------
 
 -- 4a. Taipei City (taipei)
+DELETE FROM public.query_charts
+WHERE index = 'eco_cup_store'
+  AND city IN ('taipei', 'metrotaipei');
+
 INSERT INTO public.query_charts (
     index,
     history_config,
@@ -133,25 +135,7 @@ VALUES (
     E'SELECT brand as x_axis, COUNT(*) as data FROM eco_cup_store WHERE city = \'臺北市\' GROUP BY brand ORDER BY data DESC',
     NULL,
     'taipei'
-)
-ON CONFLICT (index, city) DO UPDATE SET
-    history_config = EXCLUDED.history_config,
-    map_config_ids = EXCLUDED.map_config_ids,
-    map_filter = EXCLUDED.map_filter,
-    time_from = EXCLUDED.time_from,
-    time_to = EXCLUDED.time_to,
-    update_freq = EXCLUDED.update_freq,
-    update_freq_unit = EXCLUDED.update_freq_unit,
-    source = EXCLUDED.source,
-    short_desc = EXCLUDED.short_desc,
-    long_desc = EXCLUDED.long_desc,
-    use_case = EXCLUDED.use_case,
-    links = EXCLUDED.links,
-    contributors = EXCLUDED.contributors,
-    updated_at = EXCLUDED.updated_at,
-    query_type = EXCLUDED.query_type,
-    query_chart = EXCLUDED.query_chart,
-    query_history = EXCLUDED.query_history;
+);
 
 
 -- 4b. New Taipei City (metrotaipei)
@@ -198,25 +182,7 @@ VALUES (
     E'SELECT brand as x_axis, COUNT(*) as data FROM eco_cup_store WHERE city = \'新北市\' GROUP BY brand ORDER BY data DESC',
     NULL,
     'metrotaipei'
-)
-ON CONFLICT (index, city) DO UPDATE SET
-    history_config = EXCLUDED.history_config,
-    map_config_ids = EXCLUDED.map_config_ids,
-    map_filter = EXCLUDED.map_filter,
-    time_from = EXCLUDED.time_from,
-    time_to = EXCLUDED.time_to,
-    update_freq = EXCLUDED.update_freq,
-    update_freq_unit = EXCLUDED.update_freq_unit,
-    source = EXCLUDED.source,
-    short_desc = EXCLUDED.short_desc,
-    long_desc = EXCLUDED.long_desc,
-    use_case = EXCLUDED.use_case,
-    links = EXCLUDED.links,
-    contributors = EXCLUDED.contributors,
-    updated_at = EXCLUDED.updated_at,
-    query_type = EXCLUDED.query_type,
-    query_chart = EXCLUDED.query_chart,
-    query_history = EXCLUDED.query_history;
+);
 
 
 -- --------------------------------------------------------
@@ -233,28 +199,33 @@ WHERE index IN ('map-layers-taipei', 'map-layers-metrotaipei');
 
 -- 6b. Add eco_cup map layer component
 UPDATE public.dashboards
-SET components = array_append(components, 300)
+SET components = array_append(
+    components,
+    (SELECT id::integer FROM public.components WHERE index = 'eco_cup_store')
+)
 WHERE index IN ('map-layers-taipei', 'map-layers-metrotaipei')
-  AND NOT (components @> ARRAY[300]);
+  AND NOT (components @> ARRAY[(SELECT id::integer FROM public.components WHERE index = 'eco_cup_store')]);
 
 -- 6c. Remove eco_cup_brand if it exists
 UPDATE public.dashboards
-SET components = array_remove(components, 301)
-WHERE index IN ('map-layers-taipei', 'map-layers-metrotaipei');
+SET components = array_remove(
+    components,
+    (SELECT id::integer FROM public.components WHERE index = 'eco_cup_brand')
+)
+WHERE index IN ('map-layers-taipei', 'map-layers-metrotaipei')
+  AND EXISTS (SELECT 1 FROM public.components WHERE index = 'eco_cup_brand');
 
 -- --------------------------------------------------------
 -- 7. eco_cup_district: District distribution component
 -- --------------------------------------------------------
 
 -- 7a. Register the district component
-INSERT INTO public.components (id, index, name)
+INSERT INTO public.components (index, name)
 VALUES (
-    302,
     'eco_cup_district',
     '循環杯行政區分布'
 )
-ON CONFLICT (id) DO UPDATE SET
-    index = EXCLUDED.index,
+ON CONFLICT (index) DO UPDATE SET
     name = EXCLUDED.name;
 
 -- 7b. Chart config (DistrictChart)
@@ -271,6 +242,10 @@ ON CONFLICT (index) DO UPDATE SET
     unit = EXCLUDED.unit;
 
 -- 7c. Query config for Taipei
+DELETE FROM public.query_charts
+WHERE index = 'eco_cup_district'
+  AND city IN ('taipei', 'metrotaipei');
+
 INSERT INTO public.query_charts (
     index,
     history_config,
@@ -314,25 +289,7 @@ VALUES (
     E'SELECT district as x_axis, COUNT(*) as data FROM eco_cup_store WHERE city = \'臺北市\' GROUP BY district ORDER BY data DESC',
     NULL,
     'taipei'
-)
-ON CONFLICT (index, city) DO UPDATE SET
-    history_config = EXCLUDED.history_config,
-    map_config_ids = EXCLUDED.map_config_ids,
-    map_filter = EXCLUDED.map_filter,
-    time_from = EXCLUDED.time_from,
-    time_to = EXCLUDED.time_to,
-    update_freq = EXCLUDED.update_freq,
-    update_freq_unit = EXCLUDED.update_freq_unit,
-    source = EXCLUDED.source,
-    short_desc = EXCLUDED.short_desc,
-    long_desc = EXCLUDED.long_desc,
-    use_case = EXCLUDED.use_case,
-    links = EXCLUDED.links,
-    contributors = EXCLUDED.contributors,
-    updated_at = EXCLUDED.updated_at,
-    query_type = EXCLUDED.query_type,
-    query_chart = EXCLUDED.query_chart,
-    query_history = EXCLUDED.query_history;
+);
 
 -- 7d. Query config for New Taipei
 INSERT INTO public.query_charts (
@@ -378,28 +335,13 @@ VALUES (
     E'SELECT x_axis, SUM(data) as data FROM (SELECT district as x_axis, COUNT(*) as data FROM eco_cup_store WHERE city = \'臺北市\' GROUP BY district UNION ALL SELECT district as x_axis, COUNT(*) as data FROM eco_cup_store WHERE city = \'新北市\' GROUP BY district) d GROUP BY x_axis ORDER BY data DESC',
     NULL,
     'metrotaipei'
-)
-ON CONFLICT (index, city) DO UPDATE SET
-    history_config = EXCLUDED.history_config,
-    map_config_ids = EXCLUDED.map_config_ids,
-    map_filter = EXCLUDED.map_filter,
-    time_from = EXCLUDED.time_from,
-    time_to = EXCLUDED.time_to,
-    update_freq = EXCLUDED.update_freq,
-    update_freq_unit = EXCLUDED.update_freq_unit,
-    source = EXCLUDED.source,
-    short_desc = EXCLUDED.short_desc,
-    long_desc = EXCLUDED.long_desc,
-    use_case = EXCLUDED.use_case,
-    links = EXCLUDED.links,
-    contributors = EXCLUDED.contributors,
-    updated_at = EXCLUDED.updated_at,
-    query_type = EXCLUDED.query_type,
-    query_chart = EXCLUDED.query_chart,
-    query_history = EXCLUDED.query_history;
+);
 
 -- 7e. Add district component to dashboards
 UPDATE public.dashboards
-SET components = array_append(components, 302)
+SET components = array_append(
+    components,
+    (SELECT id::integer FROM public.components WHERE index = 'eco_cup_district')
+)
 WHERE index IN ('map-layers-taipei', 'map-layers-metrotaipei')
-  AND NOT (components @> ARRAY[302]);
+  AND NOT (components @> ARRAY[(SELECT id::integer FROM public.components WHERE index = 'eco_cup_district')]);
