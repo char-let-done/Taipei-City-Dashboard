@@ -14,7 +14,7 @@ INSERT INTO public.component_charts ("index", color, types, unit)
 VALUES (
     'wholesale_supply_chain',
     -- 順序與 map_config：臺北點、新北點、批發、蔬果弧、漁弧、肉弧、家禽弧（色與 arc paint 首色對齊）
-    ARRAY['#2ECC71','#2ECC71','#E67E22','#27AE60','#2980B9','#C0392B','#8E44AD'],
+    ARRAY['#56B96D','#56B96D','#56B96D','#27AE60','#2980B9','#C0392B','#8E44AD'],
     ARRAY['MapLegend'],
     '公斤'
 )

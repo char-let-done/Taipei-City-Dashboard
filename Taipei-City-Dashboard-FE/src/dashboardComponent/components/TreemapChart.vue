@@ -11,6 +11,7 @@ const props = defineProps([
 	"map_config",
 	"map_filter",
 	"map_filter_on",
+	"is_composite",
 ]);
 
 const emits = defineEmits([
@@ -103,6 +104,11 @@ const displaySeries = computed(() => {
 });
 
 const sum = computed(() => {
+	if (props.chart_config.categories) {
+		let total = 0;
+		props.series.forEach((s) => s.data.forEach((val) => (total += val)));
+		return Math.round(total * 100) / 100;
+	}
 	const data = props.series?.[0]?.data;
 	if (!data?.length) return 0;
 	let total = 0;
@@ -154,7 +160,10 @@ function handleDataSelection(_e, _chartContext, config) {
     v-if="activeChart === 'TreemapChart'"
     class="treemapchart"
   >
-    <div class="treemapchart-title">
+    <div
+      v-if="!is_composite"
+      class="treemapchart-title"
+    >
       <h5>總合</h5>
       <h6>{{ sum }} {{ chart_config.unit }}</h6>
     </div>
@@ -170,6 +179,8 @@ function handleDataSelection(_e, _chartContext, config) {
 
 <style scoped lang="scss">
 .treemapchart {
+	min-height: 100%;
+
 	&-title {
 		display: flex;
 		justify-content: center;

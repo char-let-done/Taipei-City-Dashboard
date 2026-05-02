@@ -8,6 +8,7 @@ export const chartTypes = {
 	MetroChart: "捷運行駛圖",
 	TimelineSeparateChart: "折線圖(比較)",
 	TimelineStackedChart: "折線圖(堆疊)",
+	DengueTrendChart: "登革熱趨勢圖",
 	GuageChart: "量表圖",
 	RadarChart: "雷達圖",
 	HeatmapChart: "熱力圖",
@@ -47,7 +48,7 @@ export const chartsPerDataType = {
 		"TreemapChart",
 		"WholesaleSupplyChainMap",
 	],
-	time: ["TimelineSeparateChart", "TimelineStackedChart", "ColumnLineChart"],
+	time: ["TimelineSeparateChart", "TimelineStackedChart", "DengueTrendChart", "ColumnLineChart"],
 	percent: [
 		"GuageChart",
 		"BarPercentChart",

@@ -84,6 +84,48 @@ export const useContentStore = defineStore("content", {
 		setMapLayerData(index, component) {
 			this.mapLayers[index] = component;
 		},
+		async fetchSubComponentData(componentIndex, city) {
+			try {
+				const configRes = await http.get("/component/", {
+					params: {
+						filtermode: "eq",
+						filterby: "index",
+						filtervalue: componentIndex,
+						city,
+					},
+				});
+				if (!configRes.data.data?.length) return null;
+				const comp = configRes.data.data[0];
+				const chartRes = await http.get(
+					`/component/${comp.id}/chart`,
+					{
+						params: {
+							city: comp.city,
+							...(!["static", "current", "demo"].includes(
+								comp.time_from,
+							)
+								? getComponentDataTimeframe(
+										comp.time_from,
+										comp.time_to,
+										true,
+									)
+								: {}),
+						},
+					},
+				);
+				comp.chart_data = chartRes.data.data;
+				if (chartRes.data.categories) {
+					comp.chart_config.categories = chartRes.data.categories;
+				}
+				return comp;
+			} catch (error) {
+				console.error(
+					`Failed to fetch sub-component ${componentIndex}:`,
+					error,
+				);
+				return null;
+			}
+		},
 		/* Steps in adding content to the application (/dashboard or /mapview) */
 		// 1. Check the current path and execute actions based on the current path
 		setRouteParams(mode, index, city) {

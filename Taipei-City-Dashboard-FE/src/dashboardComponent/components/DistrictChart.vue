@@ -1,8 +1,9 @@
 <!-- Developed by Taipei Urban Intelligence Center 2023-2024-->
 
 <script setup>
-import { computed, ref, nextTick } from "vue";
+import { computed, ref, nextTick, watch } from "vue";
 import { districtCoordinates } from "../utilities/districtCoordinates";
+import { useMapStore } from "../../store/mapStore";
 
 const props = defineProps([
 	"chart_config",
@@ -12,6 +13,7 @@ const props = defineProps([
 	"map_config",
 	"map_filter",
 	"map_filter_on",
+	"is_composite",
 ]);
 
 const emits = defineEmits([
@@ -21,6 +23,7 @@ const emits = defineEmits([
 	"clearByLayerFilter",
 	"fly"
 ]);
+const mapStore = useMapStore();
 
 const targetDistrict = ref(null);
 function brightenHex(hex, factor = 2) {
@@ -169,6 +172,24 @@ const districtData = computed(() => {
 
 	return output;
 });
+
+// Watch districtData changes and sync to mapStore fill layer
+watch(
+	districtData,
+	(newData) => {
+		if (!props.map_config) return;
+		const fillConfig = props.map_config.find((m) => m.type === "fill");
+		if (!fillConfig) return;
+		mapStore.setDistrictFillData(
+			fillConfig.index,
+			newData,
+			props.chart_config.color[0],
+			props.activeCity || "metrotaipei"
+		);
+	},
+	{ immediate: true, deep: true }
+);
+
 const tooltipData = computed(() => {
 	const categories = props.chart_config?.categories;
 	const series = props?.series;
@@ -288,7 +309,10 @@ function handleDataSelection(index) {
     v-if="activeChart === 'DistrictChart'"
     class="districtchart"
   >
-    <div class="districtchart-title">
+    <div
+      v-if="!is_composite"
+      class="districtchart-title"
+    >
       <h5>總合</h5>
       <h6>{{ districtData.sum }} {{ chart_config.unit }}</h6>
       <div class="districtchart-title-legend">

@@ -451,6 +451,24 @@ export const maplayerCommonLayout = {
 	"symbol-triangle_white": {
 		"icon-image": "triangle_white",
 	},
+	"symbol-basket_blue": {
+		"icon-image": "basket_blue",
+	},
+	"symbol-company_green": {
+		"icon-image": "company_green",
+	},
+	"symbol-water_tap_blue": {
+		"icon-image": "water_tap_blue",
+	},
+	"symbol-water_drop_green": {
+		"icon-image": "water_drop_green",
+	},
+	"symbol-gym_green": {
+		"icon-image": "gym_green",
+	},
+	"symbol-gym_blue": {
+		"icon-image": "gym_blue",
+	},
 	"symbol-youbike_elec": {
 		"icon-image": "youbike_elec",
 	},

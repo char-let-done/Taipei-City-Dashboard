@@ -82,6 +82,8 @@ export const useMapStore = defineStore("map", {
 		viewPoints: [],
 		marker: null,
 		tempMarkerCoordinates: null,
+		// Store layer IDs added by the chatbot
+		chatAddedLayers: [],
 		// Store the user's current location,
 		userLocation: { latitude: null, longitude: null },
 		// 3D Mrt Map 相關參數
@@ -96,6 +98,8 @@ export const useMapStore = defineStore("map", {
 			// [layerId]: Date
 		},
 		flowLineIntervals: {},
+		// 儲存行政區熱力圖資料（key: layer index, value: { districtData, baseColor, city }）
+		districtFillData: {},
 	}),
 	actions: {
 		/* Initialize Mapbox */
@@ -421,6 +425,14 @@ export const useMapStore = defineStore("map", {
 		},
 		// 3. Adds symbols that will be used by some map layers
 		async addSymbolSources() {
+			const customIcons = {
+				basket_blue: { icon: "shopping_basket", color: "#24B0DD" },
+				company_green: { icon: "business", color: "#56B96D" },
+				water_tap_blue: { icon: "faucet", color: "#24B0DD" },
+				water_drop_green: { icon: "water_drop", color: "#56B96D" },
+				gym_green: { icon: "fitness_center", color: "#56B96D" },
+				gym_blue: { icon: "fitness_center", color: "#24B0DD" },
+			};
 			const images = [
 				"metro",
 				"triangle_green",
@@ -442,6 +454,32 @@ export const useMapStore = defineStore("map", {
 				);
 			});
 			this.addWholesaleDepotMapIcon();
+			if (document.fonts?.ready) {
+				await document.fonts.ready;
+			}
+			Object.entries(customIcons).forEach(([id, config]) => {
+				if (this.map.hasImage(id)) return;
+				const size = 96;
+				const canvas = document.createElement("canvas");
+				canvas.width = size;
+				canvas.height = size;
+				const context = canvas.getContext("2d");
+				context.fillStyle = config.color;
+				context.beginPath();
+				context.arc(size / 2, size / 2, 40, 0, Math.PI * 2);
+				context.fill();
+				context.strokeStyle = "#ffffff";
+				context.lineWidth = 6;
+				context.stroke();
+				context.fillStyle = "#ffffff";
+				context.font = "48px 'Material Icons Round'";
+				context.textAlign = "center";
+				context.textBaseline = "middle";
+				context.fillText(config.icon, size / 2, size / 2 + 2);
+				this.map.addImage(id, context.getImageData(0, 0, size, size), {
+					pixelRatio: 2,
+				});
+			});
 			// 預載 3D 模型給 3D Mrt Map
 			const models = [
 				{ id: "mrt_car_c381", url: "/images/map/mrt_car_c381.glb" },
@@ -622,6 +660,20 @@ export const useMapStore = defineStore("map", {
 		},
 		// 3-1. Add a local geojson as a source in mapbox
 		addGeojsonSource(map_config, data) {
+			// If this is a fill layer and we have district data stored, inject count properties
+			if (map_config.type === "fill" && this.districtFillData[map_config.index]) {
+				const { districtData } = this.districtFillData[map_config.index];
+				const updatedData = JSON.parse(JSON.stringify(data));
+				updatedData.features.forEach((feature) => {
+					const districtName = feature.properties.TNAME;
+					if (districtData[districtName] !== undefined) {
+						feature.properties.count = districtData[districtName];
+					} else {
+						feature.properties.count = -1;
+					}
+				});
+				data = updatedData;
+			}
 			if (
 				!["voronoi", "isoline"].includes(map_config.type) &&
 				map_config.type !== "symbol-3d"
@@ -640,6 +692,50 @@ export const useMapStore = defineStore("map", {
 			} else {
 				this.addMapLayer(map_config);
 			}
+		},
+		// 3-1a. Update district fill layer with choropleth data
+		setDistrictFillData(index, districtData, baseColor, city) {
+			this.districtFillData[index] = { districtData, baseColor, city };
+			const highest = districtData.highest || 1;
+			const cities = city === "metrotaipei" ? ["taipei", "metrotaipei"] : [city];
+			const targetCounty = city === "taipei" ? "臺北市" : null;
+
+			cities.forEach((c) => {
+				const layerId = `${index}-fill-${c}`;
+				const sourceId = `${layerId}-source`;
+				if (!this.map || !this.map.getSource(sourceId)) return;
+
+				axios.get(`/mapData/${index}.geojson`).then((rs) => {
+					const {data} = rs;
+					data.features.forEach((feature) => {
+						const districtName = feature.properties.TNAME;
+						const countyName = feature.properties.PNAME;
+						if (targetCounty && countyName !== targetCounty) {
+							feature.properties.count = -1;
+						} else if (districtData[districtName] !== undefined) {
+							feature.properties.count = districtData[districtName];
+						} else {
+							feature.properties.count = -1;
+						}
+					});
+					this.map.getSource(sourceId).setData(data);
+					this.map.setPaintProperty(layerId, "fill-color", [
+						"interpolate",
+						["linear"],
+						["get", "count"],
+						0,
+						"#E8F5E9",
+						highest,
+						baseColor,
+					]);
+					this.map.setPaintProperty(layerId, "fill-opacity", [
+						"case",
+						["<", ["get", "count"], 0],
+						0,
+						0.6,
+					]);
+				});
+			});
 		},
 		// 3-2. Add a raster map as a source in mapbox
 		async addRasterSource(map_config) {
@@ -2570,6 +2666,15 @@ export const useMapStore = defineStore("map", {
 				duration: 1000,
 			});
 		},
+		// 2-1. Fly to a location with zoom
+		flyToLocationWithZoom(lng, lat, zoom) {
+			if (!this.map) return;
+			this.map.flyTo({
+				center: [lng, lat],
+				zoom: zoom,
+				duration: 1000,
+			});
+		},
 		// 3. Force map to resize after sidebar collapses
 		resizeMap() {
 			if (this.map) {
@@ -2893,6 +2998,7 @@ export const useMapStore = defineStore("map", {
 				this.currentLayers = [];
 				this.mapConfigs = {};
 				this.currentVisibleLayers = [];
+				this.chatAddedLayers = [];
 				this.removePopup();
 				return;
 			}
@@ -2909,6 +3015,7 @@ export const useMapStore = defineStore("map", {
 			this.currentLayers = [];
 			this.mapConfigs = {};
 			this.currentVisibleLayers = [];
+			this.chatAddedLayers = [];
 			this.removePopup();
 		},
 		// 2. Called when user navigates away from the map
@@ -2925,8 +3032,46 @@ export const useMapStore = defineStore("map", {
 			this.mapConfigs = {};
 			this.map = null;
 			this.currentVisibleLayers = [];
+			this.chatAddedLayers = [];
 			this.removePopup();
 			this.tempMarkerCoordinates = null;
+		},
+		// 3. Add map layers from chatbot and track them
+		addChatMapLayers(map_configs) {
+			if (!map_configs || map_configs.length === 0) return;
+			map_configs.forEach((element) => {
+				const mapLayerId = `${element.index}-${element.type}-${element.city}`;
+				this.addToMapLayerList([element]);
+				if (!this.chatAddedLayers.includes(mapLayerId)) {
+					this.chatAddedLayers.push(mapLayerId);
+				}
+			});
+		},
+		// 4. Remove only chatbot-added layers
+		clearChatLayers() {
+			if (!this.map) {
+				this.chatAddedLayers = [];
+				return;
+			}
+			this.chatAddedLayers.forEach((layerId) => {
+				if (this.map.getLayer(`${layerId}-flow`)) {
+					this.map.removeLayer(`${layerId}-flow`);
+				}
+				if (this.map.getLayer(layerId)) {
+					this.map.removeLayer(layerId);
+				}
+				if (this.map.getSource(`${layerId}-source`)) {
+					this.map.removeSource(`${layerId}-source`);
+				}
+				this.currentLayers = this.currentLayers.filter(
+					(el) => el !== layerId,
+				);
+				this.currentVisibleLayers = this.currentVisibleLayers.filter(
+					(el) => el !== layerId,
+				);
+				delete this.mapConfigs[layerId];
+			});
+			this.chatAddedLayers = [];
 		},
 	},
 });

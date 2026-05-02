@@ -27,21 +27,21 @@ VALUES
 (
     'public_market_tpe',
     '公有市場',
-    'circle',
+    'symbol',
     'geojson',
     NULL,
-    NULL,
-    '{"circle-color": "#FF6B6B", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1}'::json,
+    'basket_blue',
+    '{}'::json,
     '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"total_stalls","name":"攤位總數"},{"key":"food_drink","name":"飲食攤位"},{"key":"meat","name":"獸肉攤位"},{"key":"vegetable","name":"蔬菜攤位"}]'::json
 ),
 (
     'public_market_new_tpe',
     '公有市場',
-    'circle',
+    'symbol',
     'geojson',
     NULL,
-    NULL,
-    '{"circle-color": "#4ECDC4", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1}'::json,
+    'basket_blue',
+    '{}'::json,
     '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"phone","name":"電話"},{"key":"market_type","name":"營業類型"}]'::json
 );
 
