@@ -11,6 +11,7 @@ const props = defineProps([
 	"map_config",
 	"map_filter",
 	"map_filter_on",
+	"is_composite",
 ]);
 
 const emits = defineEmits([
@@ -159,7 +160,10 @@ function handleDataSelection(_e, _chartContext, config) {
     v-if="activeChart === 'TreemapChart'"
     class="treemapchart"
   >
-    <div class="treemapchart-title">
+    <div
+      v-if="!is_composite"
+      class="treemapchart-title"
+    >
       <h5>總合</h5>
       <h6>{{ sum }} {{ chart_config.unit }}</h6>
     </div>

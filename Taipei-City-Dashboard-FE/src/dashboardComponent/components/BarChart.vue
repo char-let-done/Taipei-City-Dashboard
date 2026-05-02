@@ -10,6 +10,7 @@ const props = defineProps([
 	"map_config",
 	"map_filter",
 	"map_filter_on",
+	"is_composite",
 ]);
 
 const emits = defineEmits([
@@ -68,7 +69,7 @@ function alignTotalLabels(chartContext) {
 
 const chartOptions = computed(() => ({
 	chart: {
-		offsetY: hasCategories ? 0 : 15,
+		offsetY: hasCategories || props.is_composite ? 0 : 15,
 		stacked: true,
 		toolbar: {
 			show: false,

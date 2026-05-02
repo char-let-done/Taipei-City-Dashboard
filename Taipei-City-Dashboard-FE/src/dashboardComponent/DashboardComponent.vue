@@ -1,11 +1,13 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 // import "./styles/chartStyles.css";
 // import "./styles/toggleswitch.css";
 import "material-icons/iconfont/material-icons.css";
 import { getComponentDataTimeframe } from "./utilities/dataTimeframe";
 import { timeTerms } from "./utilities/AllTimes";
 import { chartTypes } from "./utilities/chartTypes";
+import { compositeComponents } from "./utilities/compositeComponents";
+import { useContentStore } from "../store/contentStore";
 
 import ComponentTag from "./components/ComponentTag.vue";
 import TagTooltip from "./components/TagTooltip.vue";
@@ -92,7 +94,8 @@ const emits = defineEmits([
 	"clearByLayerFilter",
 	"toggleLayer",
 	"fly",
-	"changeCity"
+	"changeCity",
+	"swapMapConfig"
 ]);
 
 const activeChart = ref(props.config.chart_config.types[0]);
@@ -109,12 +112,96 @@ const activeCity = computed({
 const toggleOn = computed({
 	get: () => props.toggleOn,
 	set: (value) => {
-		emits("toggle", value, props.config.map_config);
+		emits("toggle", value, displayConfig.value.map_config);
 	},
 });
 
 const mousePosition = ref({ x: null, y: null });
 const showTagTooltip = ref(false);
+
+const contentStore = useContentStore();
+const isComposite = computed(() => !!compositeComponents[props.config.index]);
+const compositeFilters = computed(() => compositeComponents[props.config.index]?.filters || []);
+const activeFilter = ref(null);
+const subComponentsCache = ref({});
+const subLoading = ref(false);
+
+const displayConfig = computed(() => {
+	if (activeFilter.value && subComponentsCache.value[activeFilter.value]) {
+		const config = subComponentsCache.value[activeFilter.value];
+		const filter = compositeFilters.value.find(f => f.key === activeFilter.value);
+		if (filter?.chartTypeOrder) {
+			return { ...config, chart_config: { ...config.chart_config, types: filter.chartTypeOrder } };
+		}
+		return config;
+	}
+	return props.config;
+});
+
+function swapMapLayers(oldConfig, newConfig) {
+	if (!toggleOn.value) return;
+	const oldMap = oldConfig?.map_config;
+	const newMap = newConfig?.map_config;
+	if (oldMap && oldMap[0]) {
+		emits("swapMapConfig", oldMap, newMap);
+	} else if (newMap && newMap[0]) {
+		emits("swapMapConfig", null, newMap);
+	}
+}
+
+function getDefaultChart(filterKey) {
+	const filter = compositeFilters.value.find(f => f.key === filterKey);
+	if (filter?.chartTypeOrder) return filter.chartTypeOrder[0];
+	return subComponentsCache.value[filterKey]?.chart_config.types[0];
+}
+
+async function selectFilter(filterKey) {
+	if (activeFilter.value === filterKey) return;
+	const oldConfig = displayConfig.value;
+	if (subComponentsCache.value[filterKey]) {
+		activeFilter.value = filterKey;
+		activeChart.value = getDefaultChart(filterKey);
+		swapMapLayers(oldConfig, subComponentsCache.value[filterKey]);
+		return;
+	}
+	subLoading.value = true;
+	const data = await contentStore.fetchSubComponentData(filterKey, activeCity.value);
+	subLoading.value = false;
+	if (data) {
+		subComponentsCache.value[filterKey] = data;
+		activeFilter.value = filterKey;
+		activeChart.value = getDefaultChart(filterKey);
+		swapMapLayers(oldConfig, data);
+	}
+}
+
+async function prefetchCompositeData() {
+	if (!isComposite.value) return;
+	const city = activeCity.value;
+	const fetches = compositeFilters.value.map(async (f) => {
+		const data = await contentStore.fetchSubComponentData(f.key, city);
+		if (data) subComponentsCache.value[f.key] = data;
+	});
+	await Promise.all(fetches);
+	if (!activeFilter.value && compositeFilters.value.length > 0) {
+		const firstKey = compositeFilters.value[0].key;
+		if (subComponentsCache.value[firstKey]) {
+			activeFilter.value = firstKey;
+			activeChart.value = getDefaultChart(firstKey);
+		}
+	}
+}
+
+onMounted(() => {
+	prefetchCompositeData();
+});
+
+watch(() => props.activeCity, () => {
+	if (!isComposite.value) return;
+	subComponentsCache.value = {};
+	activeFilter.value = null;
+	prefetchCompositeData();
+});
 
 // Parses time data into display format
 const dataTime = computed(() => {
@@ -370,11 +457,11 @@ function returnChartComponent(name, svg) {
         </template>
       </select>
       <div
-        v-if="config.chart_config.types.length > 1"
+        v-if="displayConfig.chart_config.types.length > 1"
         class="dashboardcomponent-control-group"
       >
         <button
-          v-for="item in config.chart_config.types"
+          v-for="item in displayConfig.chart_config.types"
           :key="`${config.index}-${item}-button`"
           :class="{
             'dashboardcomponent-control-group-button': true,
@@ -420,43 +507,72 @@ function returnChartComponent(name, svg) {
       </div>
     </div>
     <div
-      v-else-if="config.chart_data && (toggleOn || !mode.includes('map'))"
+      v-else-if="(displayConfig.chart_data || subLoading) && (toggleOn || !mode.includes('map'))"
       :class="{
-        'dashboardcomponent-chart': true,
+        'dashboardcomponent-chart-wrapper': isComposite,
+        'dashboardcomponent-chart': !isComposite,
         'half-chart': mode === 'half',
         'mapopen-chart': mode === 'map',
         'halfmapopen-chart': mode === 'halfmap',
       }"
     >
-      <component
-        :is="returnChartComponent(item)"
-        v-for="item in config.chart_config.types"
-        :key="`${props.config.index}-${item}-chart-${item.city}`"
-        :active-chart="activeChart"
-        :active-city="activeCity"
-        :chart_config="config.chart_config"
-        :series="config.chart_data"
-        :map_config="config.map_config"
-        :map_filter="config.map_filter"
-        :map_filter_on="mode.includes('map')"
-        @filter-by-param="
-          (map_filter, map_config, x, y) =>
-            $emit('filterByParam', map_filter, map_config, x, y)
-        "
-        @filter-by-layer="
-          (map_config, x) => $emit('filterByLayer', map_config, x)
-        "
-        @clear-by-param-filter="
-          (map_config) => $emit('clearByParamFilter', map_config)
-        "
-        @clear-by-layer-filter="
-          (map_config) => $emit('clearByLayerFilter', map_config)
-        "
-        @toggle-layer="
-          (map_config, name, visible) => $emit('toggleLayer', map_config, name, visible)
-        "
-        @fly="(location) => $emit('fly', location)"
-      />
+      <div
+        v-if="isComposite"
+        class="dashboardcomponent-filter"
+      >
+        <button
+          v-for="f in compositeFilters"
+          :key="f.key"
+          :class="{
+            'dashboardcomponent-filter-btn': true,
+            'dashboardcomponent-filter-btn-active': activeFilter === f.key,
+          }"
+          @click="selectFilter(f.key)"
+        >
+          {{ f.label }}
+        </button>
+      </div>
+      <div
+        :class="{ 'dashboardcomponent-chart': isComposite }"
+      >
+        <template v-if="subLoading && !displayConfig.chart_data">
+          <div class="dashboardcomponent-loading">
+            <div />
+          </div>
+        </template>
+        <template v-else>
+          <component
+            :is="returnChartComponent(item)"
+            v-for="item in displayConfig.chart_config.types"
+            :key="`${props.config.index}-${activeFilter}-${item}-chart`"
+            :active-chart="activeChart"
+            :active-city="activeCity"
+            :chart_config="displayConfig.chart_config"
+            :series="displayConfig.chart_data"
+            :map_config="displayConfig.map_config"
+            :map_filter="displayConfig.map_filter"
+            :map_filter_on="mode.includes('map')"
+            :is_composite="isComposite"
+            @filter-by-param="
+              (map_filter, map_config, x, y) =>
+                $emit('filterByParam', map_filter, map_config, x, y)
+            "
+            @filter-by-layer="
+              (map_config, x) => $emit('filterByLayer', map_config, x)
+            "
+            @clear-by-param-filter="
+              (map_config) => $emit('clearByParamFilter', map_config)
+            "
+            @clear-by-layer-filter="
+              (map_config) => $emit('clearByLayerFilter', map_config)
+            "
+            @toggle-layer="
+              (map_config, name, visible) => $emit('toggleLayer', map_config, name, visible)
+            "
+            @fly="(location) => $emit('fly', location)"
+          />
+        </template>
+      </div>
     </div>
     <div
       v-else-if="
@@ -753,6 +869,49 @@ button:hover {
 		}
 	}
 
+	&-chart-wrapper {
+		height: 75%;
+		display: flex;
+		position: relative;
+		overflow: hidden;
+	}
+
+	&-filter {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding-top: 0.75rem;
+		min-width: 70px;
+		flex-shrink: 0;
+		overflow-y: auto;
+
+		&-btn {
+			padding: 6px 6px;
+			border-radius: 5px;
+			background-color: rgb(77, 77, 77);
+			opacity: 0.6;
+			color: var(--color-complement-text);
+			font-size: var(--font-s);
+			text-align: center;
+			transition: color 0.2s, opacity 0.2s;
+			user-select: none;
+			white-space: nowrap;
+			border: none;
+
+			&:hover {
+				opacity: 1;
+				color: white;
+				cursor: pointer;
+			}
+
+			&-active {
+				background-color: var(--color-highlight);
+				opacity: 1;
+				color: white;
+			}
+		}
+	}
+
 	&-chart,
 	&-loading,
 	&-error {
@@ -764,6 +923,12 @@ button:hover {
 		p {
 			color: var(--color-border);
 		}
+	}
+
+	&-chart-wrapper > &-chart {
+		height: 100%;
+		flex: 1;
+		min-width: 0;
 	}
 
 	&-loading {

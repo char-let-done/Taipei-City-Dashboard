@@ -216,6 +216,17 @@ function popularBasicLayerGA(map_config) {
               mapStore.toggleLayerByName(map_config, name, visible);
             }
           "
+          @swap-map-config="
+            (oldMap, newMap) => {
+              if (oldMap && oldMap[0]) {
+                mapStore.clearByParamFilter(oldMap);
+                mapStore.turnOffMapLayerVisibility(oldMap);
+              }
+              if (newMap && newMap[0]) {
+                mapStore.addToMapLayerList(newMap);
+              }
+            }
+          "
           @change-city="
             (city) => {
               const selectedData =
@@ -334,6 +345,17 @@ function popularBasicLayerGA(map_config) {
           @toggle-layer="
             (map_config, name, visible) => {
               mapStore.toggleLayerByName(map_config, name, visible);
+            }
+          "
+          @swap-map-config="
+            (oldMap, newMap) => {
+              if (oldMap && oldMap[0]) {
+                mapStore.clearByParamFilter(oldMap);
+                mapStore.turnOffMapLayerVisibility(oldMap);
+              }
+              if (newMap && newMap[0]) {
+                mapStore.addToMapLayerList(newMap);
+              }
             }
           "
           @fly="
