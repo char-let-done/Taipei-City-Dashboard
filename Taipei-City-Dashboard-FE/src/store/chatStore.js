@@ -37,6 +37,13 @@ export const useChatStore = defineStore('chat', () => {
     	chatData.value.push({ id: chatData.value.length + 1, isDefault: false, ...newChatData });
   	};
 
+	const clearChatData = () => {
+		chatData.value = [...defaultChatData];
+		sessionStorage.removeItem('chatData');
+		recommendComponents.value = null;
+		geoQueryResult.value = null;
+	};
+
 	const executeVectorSearch = async (query) => {
 		recommendComponents.value = [];
 		let topK = null;
@@ -163,5 +170,5 @@ export const useChatStore = defineStore('chat', () => {
 		}
 	};
 
-	return { chatData, addChatData, addQueryData, addGeoQueryData, saveChatLog, geoQueryResult }
+	return { chatData, addChatData, addQueryData, addGeoQueryData, saveChatLog, clearChatData, geoQueryResult }
 })

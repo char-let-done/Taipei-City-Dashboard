@@ -16,7 +16,7 @@ const chatStore = useChatStore();
 const contentStore = useContentStore();
 const authStore = useAuthStore();
 const mapStore = useMapStore();
-const { addChatData, addGeoQueryData, saveChatLog } = chatStore;
+const { addChatData, addGeoQueryData, saveChatLog, clearChatData } = chatStore;
 const { createDashboard } = contentStore;
 const { chatData, geoQueryResult } = storeToRefs(chatStore);
 const { editDashboard } = storeToRefs(contentStore);
@@ -148,6 +148,12 @@ watch(
     <!-- 標題 -->
     <div class="header">
       <h3>臺北城市儀表板小幫手</h3>
+      <button
+        class="clear-btn"
+        @click="clearChatData"
+      >
+        清除對話
+      </button>
     </div>
 
     <!-- 聊天區 -->
@@ -330,12 +336,29 @@ $radius-20: 20px;
 		padding: 1rem;
 		background: $panel-bg;
 		border-bottom: 3px solid $border-color;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 
 		h3 {
 			font-size: 18px;
 			font-weight: 700;
 			color: $white;
 			margin: 0;
+		}
+
+		.clear-btn {
+			background: transparent;
+			border: 1px solid $border-color;
+			color: $white;
+			font-size: 12px;
+			padding: 4px 10px;
+			border-radius: $radius-10;
+			cursor: pointer;
+
+			&:hover {
+				background: $card-bg;
+			}
 		}
 	}
 
