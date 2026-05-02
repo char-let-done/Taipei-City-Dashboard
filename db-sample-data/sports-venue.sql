@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS public.sports_venue (
     data_time timestamp with time zone,
+    city text,
     venue_id text,
     name text,
     category text,
@@ -29,6 +30,9 @@ CREATE TABLE IF NOT EXISTS public.sports_venue (
 ALTER TABLE public.sports_venue
     ADD COLUMN IF NOT EXISTS category text;
 
+ALTER TABLE public.sports_venue
+    ADD COLUMN IF NOT EXISTS city text;
+
 CREATE INDEX IF NOT EXISTS sports_venue_wkb_geometry_idx
     ON public.sports_venue USING gist (wkb_geometry);
 
@@ -37,6 +41,9 @@ CREATE INDEX IF NOT EXISTS sports_venue_district_idx
 
 CREATE INDEX IF NOT EXISTS sports_venue_category_idx
     ON public.sports_venue (category);
+
+CREATE INDEX IF NOT EXISTS sports_venue_city_idx
+    ON public.sports_venue (city);
 
 INSERT INTO public.components ("index", name)
 VALUES ('sports_venue', '運動場館')
@@ -60,44 +67,11 @@ INSERT INTO public.component_maps ("index", title, type, source, size, icon, pai
 VALUES (
     'sports_venue',
     '運動場館',
-    'circle',
+    'symbol',
     'api',
     NULL,
-    NULL,
-    '{
-        "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10, 3,
-            14, [
-                "interpolate",
-                ["linear"],
-                ["to-number", ["get", "people_capacity"]],
-                0, 4,
-                100, 5,
-                500, 8,
-                3000, 12
-            ],
-            17, [
-                "interpolate",
-                ["linear"],
-                ["to-number", ["get", "people_capacity"]],
-                0, 6,
-                100, 8,
-                500, 12,
-                3000, 18
-            ]
-        ],
-        "circle-color": [
-            "case",
-            ["==", ["get", "is_open"], true], "#24B0DD",
-            "#8F98A3"
-        ],
-        "circle-opacity": 0.84,
-        "circle-stroke-color": "#ffffff",
-        "circle-stroke-width": 1
-    }'::json,
+    'gym_green',
+    '{}'::json,
     '[
         {"key":"photo_url","name":"照片","mode":"image"},
         {"key":"name","name":"場地名稱"},
@@ -113,7 +87,7 @@ VALUES (
 );
 
 DELETE FROM public.query_charts
-WHERE "index" = 'sports_venue' AND city = 'taipei';
+WHERE "index" = 'sports_venue' AND city IN ('taipei', 'metrotaipei');
 
 INSERT INTO public.query_charts (
     "index",
@@ -155,9 +129,57 @@ VALUES (
     NOW(),
     NOW(),
     'two_d',
-    'SELECT category AS x_axis, COUNT(*)::float AS data FROM public.sports_venue WHERE category IS NOT NULL AND category != '''' GROUP BY category ORDER BY data DESC, x_axis',
+    'SELECT category AS x_axis, COUNT(*)::float AS data FROM public.sports_venue WHERE city = ''taipei'' AND category IS NOT NULL AND category != '''' GROUP BY category ORDER BY data DESC, x_axis',
     NULL,
     'taipei'
+);
+
+INSERT INTO public.query_charts (
+    "index",
+    history_config,
+    map_config_ids,
+    map_filter,
+    time_from,
+    time_to,
+    update_freq,
+    update_freq_unit,
+    source,
+    short_desc,
+    long_desc,
+    use_case,
+    links,
+    contributors,
+    created_at,
+    updated_at,
+    query_type,
+    query_chart,
+    query_history,
+    city
+)
+VALUES (
+    'sports_venue',
+    NULL,
+    ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'sports_venue' ORDER BY id DESC LIMIT 1)],
+    '{"mode":"byParam","byParam":{"xParam":"category"}}',
+    'current',
+    NULL,
+    1,
+    'day',
+    '臺北市政府體育局、新北市政府',
+    '顯示雙北運動場館位置、開放狀態、容納人數與場館照片。',
+    '本資料整合臺北市政府體育局場地租借系統與新北市地圖便民服務運動場館圖資。臺北資料包含場館照片、租借資訊與容納人數；新北資料包含各行政區運動場館點位，並由 TWD97 座標轉換為 WGS84。',
+    '可用於雙北運動設施盤點、行政區場館供給比較、民眾查找運動場地，以及與人口、交通等圖層疊合分析。',
+    ARRAY[
+        'https://vbs.sports.taipei/venues/',
+        'https://map.ntpc.gov.tw/MapObject/LMapFrme.aspx'
+    ],
+    ARRAY['doit', 'ntpc'],
+    NOW(),
+    NOW(),
+    'two_d',
+    'SELECT category AS x_axis, COUNT(*)::float AS data FROM public.sports_venue WHERE city IN (''taipei'', ''metrotaipei'') AND category IS NOT NULL AND category != '''' GROUP BY category ORDER BY data DESC, x_axis',
+    NULL,
+    'metrotaipei'
 );
 
 INSERT INTO public.dashboards ("index", name, components, icon, created_at, updated_at)
@@ -179,6 +201,27 @@ INSERT INTO public.dashboard_groups (dashboard_id, group_id)
 SELECT d.id, 2
 FROM public.dashboards d
 WHERE d."index" = 'sports-venue-taipei'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.dashboards ("index", name, components, icon, created_at, updated_at)
+VALUES (
+    'sports-venue-metrotaipei',
+    '運動場館',
+    ARRAY[(SELECT id FROM public.components WHERE "index" = 'sports_venue')],
+    'sports_basketball',
+    NOW(),
+    NOW()
+)
+ON CONFLICT ("index") DO UPDATE
+SET name = EXCLUDED.name,
+    components = EXCLUDED.components,
+    icon = EXCLUDED.icon,
+    updated_at = NOW();
+
+INSERT INTO public.dashboard_groups (dashboard_id, group_id)
+SELECT d.id, 3
+FROM public.dashboards d
+WHERE d."index" = 'sports-venue-metrotaipei'
 ON CONFLICT DO NOTHING;
 
 SELECT setval('public.components_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.components), true);

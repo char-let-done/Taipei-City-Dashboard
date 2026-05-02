@@ -423,6 +423,14 @@ export const useMapStore = defineStore("map", {
 		},
 		// 3. Adds symbols that will be used by some map layers
 		async addSymbolSources() {
+			const customIcons = {
+				basket_blue: { icon: "shopping_basket", color: "#24B0DD" },
+				company_green: { icon: "business", color: "#56B96D" },
+				water_tap_blue: { icon: "faucet", color: "#24B0DD" },
+				water_drop_green: { icon: "water_drop", color: "#56B96D" },
+				gym_green: { icon: "fitness_center", color: "#56B96D" },
+				gym_blue: { icon: "fitness_center", color: "#24B0DD" },
+			};
 			const images = [
 				"metro",
 				"triangle_green",
@@ -442,6 +450,32 @@ export const useMapStore = defineStore("map", {
 						this.map.addImage(element, image);
 					},
 				);
+			});
+			if (document.fonts?.ready) {
+				await document.fonts.ready;
+			}
+			Object.entries(customIcons).forEach(([id, config]) => {
+				if (this.map.hasImage(id)) return;
+				const size = 96;
+				const canvas = document.createElement("canvas");
+				canvas.width = size;
+				canvas.height = size;
+				const context = canvas.getContext("2d");
+				context.fillStyle = config.color;
+				context.beginPath();
+				context.arc(size / 2, size / 2, 40, 0, Math.PI * 2);
+				context.fill();
+				context.strokeStyle = "#ffffff";
+				context.lineWidth = 6;
+				context.stroke();
+				context.fillStyle = "#ffffff";
+				context.font = "48px 'Material Icons Round'";
+				context.textAlign = "center";
+				context.textBaseline = "middle";
+				context.fillText(config.icon, size / 2, size / 2 + 2);
+				this.map.addImage(id, context.getImageData(0, 0, size, size), {
+					pixelRatio: 2,
+				});
 			});
 			// 預載 3D 模型給 3D Mrt Map
 			const models = [

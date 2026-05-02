@@ -8,9 +8,11 @@
       "water",
       "water_pipe",
       "臺北市公共管線圖資",
-      "自來水系統"
+      "新北市公共管線圖資",
+      "自來水系統",
+      "metrotaipei"
     ],
-    "description": "Taipei public utility water-system pipe LineString data from Taipei Open Data.",
+    "description": "Taipei and New Taipei public utility water-system pipe LineString data.",
     "default_args": {
       "owner": "airflow",
       "email": [
@@ -29,16 +31,16 @@
     "load_behavior": "replace"
   },
   "data_infos": {
-    "name_cn": "臺北市公共管線圖資_自來水系統管線",
+    "name_cn": "雙北公共管線圖資_自來水系統管線",
     "airflow_update_freq": "monthly",
-    "source": "https://data.taipei/dataset/detail?id=af167303-0e5f-45dd-b624-a01f541565ce",
-    "source_type": "Taipei Open Data XML downloads",
-    "source_dept": "臺北市政府工務局",
+    "source": "https://data.taipei/dataset/detail?id=af167303-0e5f-45dd-b624-a01f541565ce; https://roadmt.maintenance.ntpc.gov.tw/iROAD",
+    "source_type": "Taipei Open Data XML downloads and New Taipei ArcGIS MapServer query",
+    "source_dept": "臺北市政府工務局、新北市政府",
     "gis_format": "LineString",
     "output_coordinate": "EPSG:4326",
     "is_geometry": 1,
-    "dataset_description": "臺北市公共管線圖資中的自來水系統管線，原始資料分割為多個 XML 檔案，包含 posList 與管線屬性。",
-    "etl_description": "Fetch all XML resources, stream parse pipe records, convert posList line geometry from TWD97 to WGS84, then write the current PostgreSQL table.",
+    "dataset_description": "雙北公共管線圖資中的自來水系統管線。臺北市原始資料分割為多個 XML 檔案，包含 posList 與管線屬性；新北市資料來自 iROAD ArcGIS MapServer 的 V_NewAllPipe 圖層。",
+    "etl_description": "Fetch Taipei XML resources and stream parse pipe records, query New Taipei ArcGIS water pipe features, normalize line geometry to WGS84, then write the current PostgreSQL table.",
     "sensitivity": "public"
   }
 }

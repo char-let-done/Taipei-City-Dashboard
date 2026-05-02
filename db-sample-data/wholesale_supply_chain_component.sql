@@ -14,7 +14,7 @@ INSERT INTO public.component_charts ("index", color, types, unit)
 VALUES (
     'wholesale_supply_chain',
     -- 順序與 map_config：臺北點、新北點、批發、蔬果弧、漁弧、肉弧、家禽弧（色與 arc paint 首色對齊）
-    ARRAY['#2ECC71','#2ECC71','#E67E22','#27AE60','#2980B9','#C0392B','#8E44AD'],
+    ARRAY['#56B96D','#56B96D','#56B96D','#27AE60','#2980B9','#C0392B','#8E44AD'],
     ARRAY['MapLegend'],
     '公斤'
 )
@@ -53,7 +53,7 @@ VALUES
 (
     'supply_chain_wholesale',
     '���發市場',
-    'symbol', 'geojson', NULL, 'triangle_green',
+    'symbol', 'geojson', NULL, 'company_green',
     '{}'::json,
     '[{"key":"name","name":"市場名稱"},{"key":"type","name":"類型"},{"key":"district","name":"行政區"},{"key":"categories","name":"供貨類別"}]'::json
 ),

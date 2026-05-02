@@ -8,9 +8,11 @@
       "sports",
       "venue",
       "運動場館",
-      "臺北市政府體育局"
+      "臺北市政府體育局",
+      "新北市政府",
+      "metrotaipei"
     ],
-    "description": "Taipei sports venue booking system venue list and locations.",
+    "description": "Taipei sports venue booking system and New Taipei sports venue map service venue lists and locations.",
     "default_args": {
       "owner": "airflow",
       "email": [
@@ -29,16 +31,16 @@
     "load_behavior": "replace"
   },
   "data_infos": {
-    "name_cn": "臺北市運動場館",
+    "name_cn": "雙北運動場館",
     "airflow_update_freq": "daily",
-    "source": "https://vbs.sports.taipei/venues/ajax.php FUNC=GetVenues",
-    "source_type": "Taipei sports venue booking API and HTML detail pages",
-    "source_dept": "臺北市政府體育局",
+    "source": "https://vbs.sports.taipei/venues/ajax.php FUNC=GetVenues; https://map.ntpc.gov.tw/MapObject/LMapFrme.aspx/Q3; https://map.ntpc.gov.tw/MapObject/LMapFrme.aspx/Q4",
+    "source_type": "Taipei sports venue booking API and HTML detail pages; New Taipei map ASP.NET JSON APIs",
+    "source_dept": "臺北市政府體育局、新北市政府",
     "gis_format": "Point",
     "output_coordinate": "EPSG:4326",
     "is_geometry": 1,
-    "dataset_description": "臺北市政府體育局場地租借系統運動場館資料，包含場館名稱、主場館、行政區、開放狀態、容納人數、面積、租借狀態、照片與座標。",
-    "etl_description": "POST venue list API, fetch each venue detail page, parse VLatLon/static map coordinates, normalize image URL, classify venue category from name with TWCC AI, generate WGS84 points, then write PostgreSQL.",
+    "dataset_description": "臺北市政府體育局場地租借系統與新北市地圖便民服務運動場館資料，包含場館名稱、場館類別、行政區、開放狀態、容納人數、面積、租借狀態、照片與座標。",
+    "etl_description": "POST Taipei venue list API, fetch each venue detail page, parse VLatLon/static map coordinates, normalize image URL, classify venue category from name with TWCC AI; POST New Taipei town API, fetch sports venue points for each New Taipei town, convert TWD97 coordinates to WGS84; then write PostgreSQL.",
     "sensitivity": "public"
   }
 }

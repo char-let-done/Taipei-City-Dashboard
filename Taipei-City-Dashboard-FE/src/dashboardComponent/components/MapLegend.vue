@@ -15,6 +15,14 @@ import cctv from "../assets/map/cctv.png";
 import live from "../assets/map/live.png";
 
 const eco_cup = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%234CAF50'/%3E%3C/svg%3E";
+const customIcons = {
+	basket_blue: { icon: "shopping_basket", color: "#24B0DD" },
+	company_green: { icon: "business", color: "#56B96D" },
+	water_tap_blue: { icon: "faucet", color: "#24B0DD" },
+	water_drop_green: { icon: "water_drop", color: "#56B96D" },
+	gym_green: { icon: "fitness_center", color: "#56B96D" },
+	gym_blue: { icon: "fitness_center", color: "#24B0DD" },
+};
 
 const props = defineProps([
 	"chart_config",
@@ -61,6 +69,10 @@ function returnIcon(name) {
 	default:
 		return "";
 	}
+}
+
+function returnCustomIcon(name) {
+	return customIcons[name] || null;
 }
 
 const selectedIndex = ref(null);
@@ -120,8 +132,15 @@ function handleDataSelection(index) {
         @click="handleDataSelection(index)"
       >
         <!-- Show different icons for different map types -->
+        <span
+          v-if="returnCustomIcon(item.icon)"
+          class="maplegend-material-icon"
+          :style="{ backgroundColor: returnCustomIcon(item.icon).color }"
+        >
+          {{ returnCustomIcon(item.icon).icon }}
+        </span>
         <div
-          v-if="item.type !== 'symbol'"
+          v-else-if="item.type !== 'symbol'"
           :style="{
             backgroundColor: `${chart_config.color[index]}`,
             height: item.type === 'line' ? '0.4rem' : '1rem',
@@ -185,9 +204,23 @@ button {
 			cursor: auto;
 
 			div:first-child,
-			img {
+			img,
+			.maplegend-material-icon {
 				width: var(--font-ms);
 				margin-right: 0.75rem;
+			}
+
+			.maplegend-material-icon {
+				height: var(--font-ms);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border-radius: 50%;
+				color: white;
+				font-family: var(--font-icon);
+				font-size: 0.75rem;
+				line-height: 1;
+				flex-shrink: 0;
 			}
 
 			h5 {

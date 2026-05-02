@@ -6,6 +6,7 @@ def _transfer(**kwargs):
     import json
     import os
     import re
+    import time
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from html import unescape
     from pathlib import Path
@@ -31,6 +32,10 @@ def _transfer(**kwargs):
 
     base_url = "https://vbs.sports.taipei"
     list_url = f"{base_url}/venues/ajax.php"
+    ntpc_base_url = "https://map.ntpc.gov.tw"
+    ntpc_towns_url = f"{ntpc_base_url}/MapObject/LMapFrme.aspx/Q3"
+    ntpc_venues_url = f"{ntpc_base_url}/MapObject/LMapFrme.aspx/Q4"
+    ntpc_sports_class = "G0404000"
     headers = {
         "accept": "*/*",
         "charset": "utf-8",
@@ -42,8 +47,17 @@ def _transfer(**kwargs):
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
         ),
     }
+    ntpc_headers = {
+        "accept": "*/*",
+        "content-type": "application/json; charset=UTF-8",
+        "origin": ntpc_base_url,
+        "referer": f"{ntpc_base_url}/MapObject/LMapFrme.aspx",
+        "user-agent": headers["user-agent"],
+        "x-requested-with": "XMLHttpRequest",
+    }
 
     session = requests.Session()
+    requests.packages.urllib3.disable_warnings()
     response = session.post(
         list_url,
         data="FUNC=GetVenues",
@@ -65,6 +79,12 @@ def _transfer(**kwargs):
 
     def parse_number(value):
         return pd.to_numeric(value, errors="coerce")
+
+    def parse_datatable_rows(payload):
+        data = payload.get("d", payload)
+        if isinstance(data, dict):
+            return data.get("rows") or []
+        return []
 
     def parse_lat_lng(html):
         html = unescape(html)
@@ -113,6 +133,16 @@ def _transfer(**kwargs):
             "桌球室": "桌球場",
             "健身中心": "健身房",
             "體適能中心": "健身房",
+            "World Gym": "健身房",
+            "Curves": "健身房",
+            "Fitness": "健身房",
+            "健身俱樂部": "健身房",
+            "瑜伽": "瑜伽教室",
+            "YOGA": "瑜伽教室",
+            "高爾夫": "高爾夫球場",
+            "運動中心": "運動中心",
+            "游泳": "游泳池",
+            "衝浪": "水上運動",
         }
         for source_text, category in replacements.items():
             if source_text in cleaned_name:
@@ -210,6 +240,7 @@ def _transfer(**kwargs):
 
         return {
             "data_time": get_tpe_now_time_str(is_with_tz=True),
+            "city": "taipei",
             "venue_id": venue_id,
             "name": venue.get("Name"),
             "name_eng": venue.get("NameEng"),
@@ -231,30 +262,116 @@ def _transfer(**kwargs):
             "lng": lng,
         }
 
-    rows = []
+    def fetch_ntpc_towns():
+        town_response = session.post(
+            ntpc_towns_url,
+            json={"ClassID": ""},
+            headers=ntpc_headers,
+            proxies=proxies,
+            timeout=60,
+            verify=False,
+        )
+        town_response.raise_for_status()
+        towns = parse_datatable_rows(town_response.json())
+        return [
+            town
+            for town in towns
+            if str(town.get("COUN_ID")) == "65000" and town.get("TOWN_ID")
+        ]
+
+    def fetch_ntpc_venue_rows(town):
+        town_id = str(town.get("TOWN_ID"))
+        town_name = town.get("TOWN_NA")
+        venue_response = session.post(
+            ntpc_venues_url,
+            json={"town_id": town_id, "LM_Class": ntpc_sports_class},
+            headers=ntpc_headers,
+            proxies=proxies,
+            timeout=60,
+            verify=False,
+        )
+        venue_response.raise_for_status()
+        venues = parse_datatable_rows(venue_response.json())
+        rows = []
+        now = get_tpe_now_time_str(is_with_tz=True)
+        for idx, venue in enumerate(venues, start=1):
+            name = str(venue.get("ALIAS") or "").strip()
+            x = parse_number(venue.get("X"))
+            y = parse_number(venue.get("Y"))
+            if not name or pd.isna(x) or pd.isna(y):
+                continue
+            rows.append(
+                {
+                    "data_time": now,
+                    "city": "metrotaipei",
+                    "venue_id": f"ntpc-{town_id}-{idx}",
+                    "name": name,
+                    "category": fallback_category(name),
+                    "name_eng": None,
+                    "main_name": name,
+                    "main_name_eng": None,
+                    "district": town_name,
+                    "district_eng": None,
+                    "is_open": None,
+                    "is_sports_center": "國民運動中心" in name,
+                    "organ": "新北市政府",
+                    "people_capacity": None,
+                    "area_sqm": None,
+                    "rental_status": None,
+                    "locker_rent_status": None,
+                    "sports_center_rent_url": None,
+                    "photo_url": None,
+                    "detail_url": f"{ntpc_base_url}/MapObject/LMapFrme.aspx",
+                    "raw_x": x,
+                    "raw_y": y,
+                }
+            )
+        time.sleep(0.1)
+        return rows
+
+    taipei_rows = []
     with ThreadPoolExecutor(max_workers=12) as executor:
         futures = [executor.submit(fetch_detail_row, venue) for venue in venues]
         for future in as_completed(futures):
             row = future.result()
             if row:
-                rows.append(row)
+                taipei_rows.append(row)
 
-    if not rows:
+    if not taipei_rows:
         raise ValueError("No sports venue records had parseable coordinates.")
 
-    data = pd.DataFrame(rows)
-    category_by_name = categorize_names(data["name"])
-    data["category"] = data["name"].map(category_by_name)
-    gdata = add_point_wkbgeometry_column_to_df(
-        data,
-        x=data["lng"],
-        y=data["lat"],
+    taipei_data = pd.DataFrame(taipei_rows)
+    category_by_name = categorize_names(taipei_data["name"])
+    taipei_data["category"] = taipei_data["name"].map(category_by_name)
+    taipei_gdata = add_point_wkbgeometry_column_to_df(
+        taipei_data,
+        x=taipei_data["lng"],
+        y=taipei_data["lat"],
         from_crs=4326,
     )
 
-    ready_data = gdata[
+    ntpc_rows = []
+    ntpc_towns = fetch_ntpc_towns()
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(fetch_ntpc_venue_rows, town) for town in ntpc_towns]
+        for future in as_completed(futures):
+            ntpc_rows.extend(future.result())
+
+    if ntpc_rows:
+        ntpc_data = pd.DataFrame(ntpc_rows)
+        ntpc_gdata = add_point_wkbgeometry_column_to_df(
+            ntpc_data,
+            x=ntpc_data["raw_x"],
+            y=ntpc_data["raw_y"],
+            from_crs=3826,
+        )
+    else:
+        ntpc_gdata = pd.DataFrame(columns=taipei_gdata.columns)
+
+    ready_data = pd.concat([taipei_gdata, ntpc_gdata], ignore_index=True)[
         [
             "data_time",
+            "city",
             "venue_id",
             "name",
             "category",
