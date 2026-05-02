@@ -8,14 +8,17 @@ import UserLogo from "../icons/UserLogo.vue";
 import { useChatStore } from "../../store/chatStore";
 import { useContentStore } from "../../store/contentStore";
 import { useAuthStore } from "../../store/authStore";
+import { useMapStore } from "../../store/mapStore";
+import router from "../../router/index";
 import http from "../../router/axios";
 
 const chatStore = useChatStore();
 const contentStore = useContentStore();
 const authStore = useAuthStore();
-const { addChatData, addQueryData, saveChatLog } = chatStore;
+const mapStore = useMapStore();
+const { addChatData, addGeoQueryData, saveChatLog } = chatStore;
 const { createDashboard } = contentStore;
-const { chatData } = storeToRefs(chatStore);
+const { chatData, geoQueryResult } = storeToRefs(chatStore);
 const { editDashboard } = storeToRefs(contentStore);
 const { user } = storeToRefs(authStore);
 
@@ -64,12 +67,65 @@ const qaBtnHandler = async (text, relations) => {
 
 const sendBtnHandler = (text) => {
 	if (!text.trim()) return;
-	addQueryData({
+	addGeoQueryData({
 		role: "user",
 		content: text,
 	});
 	userMessage.value = "";
 };
+
+const executeGeoQueryOnMap = async (result) => {
+	if (!result || !result.location) return;
+
+	// Navigate to mapview if not already there
+	if (authStore.currentPath !== "mapview") {
+		await router.push({
+			name: "mapview",
+			query: { index: "map-layers-taipei", city: "taipei" },
+		});
+	}
+
+	// Wait for map to be ready
+	await new Promise((resolve) => {
+		const check = () => {
+			if (mapStore.map) {
+				resolve();
+			} else {
+				setTimeout(check, 200);
+			}
+		};
+		check();
+	});
+
+	// Clear previous chat layers
+	mapStore.clearChatLayers();
+
+	// Fly to location with zoom
+	mapStore.flyToLocationWithZoom(
+		result.location.lng,
+		result.location.lat,
+		result.location.zoom,
+	);
+
+	// Drop marker
+	mapStore.marker
+		.setLngLat({ lng: result.location.lng, lat: result.location.lat })
+		.addTo(mapStore.map);
+
+	// Add component map layers
+	if (result.components && result.components.length > 0) {
+		for (const comp of result.components) {
+			if (comp.map_config && comp.map_config.length > 0) {
+				mapStore.addChatMapLayers(comp.map_config);
+			}
+		}
+	}
+};
+
+watch(geoQueryResult, async (result) => {
+	if (!result) return;
+	await executeGeoQueryOnMap(result);
+});
 
 const toggleSticky = () => {
 	isStickyOpen.value = !isStickyOpen.value;

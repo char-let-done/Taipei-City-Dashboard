@@ -10,7 +10,7 @@ export const useChatStore = defineStore('chat', () => {
       		role: 'bot',
 	  		isDefault: true,
       		content:
-        	'您好，我是【臺北城市儀表板】小幫手，很高興為您服務！\n 您可以： \n\n • 點擊左側既有的儀表板主題，快速查看各主題內容 \n • 輸入您感興趣的主題描述，我會自動為您組建最適合的儀表板 \n\n 如果有想了解的內容，歡迎直接告訴我，我會盡力協助！\n\n 📩 聯絡信箱：tuic@gov.taipei \n 🏢 臺北大數據中心 \n\n',
+        		'您好，我是【臺北城市儀表板】小幫手，很高興為您服務！\n 您可以： \n\n • 點擊左側既有的儀表板主題，快速查看各主題內容 \n • 輸入您感興趣的主題描述，我會自動為您組建最適合的儀表板 \n\n 如果有想了解的內容，歡迎直接告訴我，我會盡力協助！\n\n 📩 聯絡信箱：tuic@gov.taipei \n 🏢 臺北大數據中心 \n\n',
     	},
   	];
 
@@ -26,9 +26,9 @@ export const useChatStore = defineStore('chat', () => {
   	watch(
     	chatData,
     	(newVal) => {
-      	// 只存使用者與機器人的聊天訊息，不存重複的預設訊息
-      	const userBotMessages = newVal.filter((item) => !item.isDefault)
-      	sessionStorage.setItem('chatData', JSON.stringify(userBotMessages))
+      		// 只存使用者與機器人的聊天訊息，不存重複的預設訊息
+      		const userBotMessages = newVal.filter((item) => !item.isDefault)
+      		sessionStorage.setItem('chatData', JSON.stringify(userBotMessages))
     	},
     	{ deep: true }
   	);
@@ -37,10 +37,7 @@ export const useChatStore = defineStore('chat', () => {
     	chatData.value.push({ id: chatData.value.length + 1, isDefault: false, ...newChatData });
   	};
 
-  	const addQueryData = async (newChatData) => {
-
-    	chatData.value.push({ id: chatData.value.length + 1, isDefault: false, ...newChatData });
-
+	const executeVectorSearch = async (query) => {
 		recommendComponents.value = [];
 		let topK = null;
 
@@ -48,7 +45,7 @@ export const useChatStore = defineStore('chat', () => {
 			const response = await http.post(
   				"/vector/component",
   				new URLSearchParams({
-    				query: newChatData.content,
+    				query: query,
     				limit: 10,
     				score: 0.8,
   				}),
@@ -85,7 +82,7 @@ export const useChatStore = defineStore('chat', () => {
 			// 把 result 蓋回去 recommendComponents
 			recommendComponents.value = result
 
-		} catch (error) { 
+		} catch (error) {
 			console.error("VectorAnalysisError :", error);
 		}
 
@@ -98,31 +95,73 @@ export const useChatStore = defineStore('chat', () => {
 		}
 
 		// 分析結束後紀錄問答log
-		saveChatLog(newChatData.content, recommendComponents.value);
+		saveChatLog(query, recommendComponents.value);
+	};
+
+	const addQueryData = async (newChatData) => {
+    	chatData.value.push({ id: chatData.value.length + 1, isDefault: false, ...newChatData });
+		await executeVectorSearch(newChatData.content);
   	};
 
 	const saveChatLog = async(question, answer) => {
 		try {
-        	const formData = new FormData();
-        	const d = new Date();
-        	const todayId =
-          		d.getFullYear() +
-          		String(d.getMonth() + 1).padStart(2, "0") +
-          		String(d.getDate()).padStart(2, "0");
+        		const formData = new FormData();
+        		const d = new Date();
+        		const todayId =
+          			d.getFullYear() +
+          			String(d.getMonth() + 1).padStart(2, "0") +
+          			String(d.getDate()).padStart(2, "0");
 
-        	formData.append("session", "session_" + todayId);
-        	formData.append("question", question);
-        	formData.append("answer", JSON.stringify(answer));
+        		formData.append("session", "session_" + todayId);
+        		formData.append("question", question);
+        		formData.append("answer", JSON.stringify(answer));
 
-        	await http.post("/chatlog/", formData, {
-          		headers: {
-            		"Content-Type": "multipart/form-data",
-          		},
-        	});
-      	} catch (error) {
-        	console.error("saveChatLog error:", error);
-      	}
+        		await http.post("/chatlog/", formData, {
+          			headers: {
+            			"Content-Type": "multipart/form-data",
+          			},
+        		});
+      		} catch (error) {
+        		console.error("saveChatLog error:", error);
+      		}
 	};
 
-	return { chatData, addChatData, addQueryData, saveChatLog }
+	const geoQueryResult = ref(null);
+
+	const addGeoQueryData = async (newChatData) => {
+		chatData.value.push({ id: chatData.value.length + 1, isDefault: false, ...newChatData });
+		geoQueryResult.value = null;
+
+		try {
+			const response = await http.post("/ai/chat/geo-query", {
+				query: newChatData.content,
+			});
+
+			if (response.data?.fallback) {
+				// Fallback to existing vector search mode (user message already pushed)
+				await executeVectorSearch(newChatData.content);
+				return;
+			}
+
+			const {data} = response;
+			if (data?.location && data?.summary) {
+				geoQueryResult.value = data;
+				chatData.value.push({
+					id: chatData.value.length + 1,
+					role: 'bot',
+					isDefault: false,
+					content: data.summary,
+					geoQuery: true,
+				});
+			} else {
+				await executeVectorSearch(newChatData.content);
+			}
+		} catch (error) {
+			console.error("GeoQueryError:", error);
+			// Fallback to existing vector search on any error
+			await executeVectorSearch(newChatData.content);
+		}
+	};
+
+	return { chatData, addChatData, addQueryData, addGeoQueryData, saveChatLog, geoQueryResult }
 })
