@@ -1,10 +1,12 @@
 CREATE TABLE IF NOT EXISTS public.sports_center (
     data_time timestamp with time zone,
+    city text,
     name text,
     postal_code text,
     address text,
     phone text,
     website text,
+    source_url text,
     location_id text,
     realtime_name text,
     sw_people_num double precision,
@@ -20,6 +22,9 @@ CREATE TABLE IF NOT EXISTS public.sports_center (
     _mtime timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     ogc_fid serial PRIMARY KEY
 );
+
+ALTER TABLE public.sports_center ADD COLUMN IF NOT EXISTS city text;
+ALTER TABLE public.sports_center ADD COLUMN IF NOT EXISTS source_url text;
 
 CREATE INDEX IF NOT EXISTS sports_center_wkb_geometry_idx
     ON public.sports_center USING gist (wkb_geometry);
@@ -77,6 +82,7 @@ VALUES (
         {"key":"address","name":"地址"},
         {"key":"phone","name":"電話"},
         {"key":"website","name":"網址"},
+        {"key":"city","name":"城市"},
         {"key":"sw_people_num","name":"泳池目前人數"},
         {"key":"sw_max_people_num","name":"泳池容留人數"},
         {"key":"gym_people_num","name":"健身房目前人數"},
@@ -86,7 +92,7 @@ VALUES (
 );
 
 DELETE FROM public.query_charts
-WHERE "index" = 'sports_center' AND city = 'taipei';
+WHERE "index" = 'sports_center' AND city IN ('taipei', 'metrotaipei');
 
 INSERT INTO public.query_charts (
     "index",
@@ -132,15 +138,79 @@ VALUES (
     NOW(),
     'three_d',
     'SELECT name AS x_axis, ''pool'' AS icon, ''泳池目前人數'' AS y_axis, COALESCE(sw_people_num, 0)::int AS data FROM public.sports_center
+WHERE city = ''taipei''
 UNION ALL
 SELECT name AS x_axis, ''pool'' AS icon, ''泳池容留人數'' AS y_axis, COALESCE(sw_max_people_num, 0)::int AS data FROM public.sports_center
+WHERE city = ''taipei''
 UNION ALL
 SELECT name AS x_axis, ''fitness_center'' AS icon, ''健身房目前人數'' AS y_axis, COALESCE(gym_people_num, 0)::int AS data FROM public.sports_center
+WHERE city = ''taipei''
 UNION ALL
 SELECT name AS x_axis, ''fitness_center'' AS icon, ''健身房容留人數'' AS y_axis, COALESCE(gym_max_people_num, 0)::int AS data FROM public.sports_center
+WHERE city = ''taipei''
 ORDER BY x_axis, y_axis',
     NULL,
     'taipei'
+);
+
+INSERT INTO public.query_charts (
+    "index",
+    history_config,
+    map_config_ids,
+    map_filter,
+    time_from,
+    time_to,
+    update_freq,
+    update_freq_unit,
+    source,
+    short_desc,
+    long_desc,
+    use_case,
+    links,
+    contributors,
+    created_at,
+    updated_at,
+    query_type,
+    query_chart,
+    query_history,
+    city
+)
+VALUES (
+    'sports_center',
+    NULL,
+    ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'sports_center' ORDER BY id DESC LIMIT 1)],
+    '{"mode":"byParam","byParam":{"xParam":"name"}}',
+    'current',
+    NULL,
+    10,
+    'minute',
+    '新北市政府體育局、Sportable 運動中心即時人流 API',
+    '顯示新北市國民運動中心位置，以及游泳池與健身房即時人流。',
+    '本資料整合新北市政府體育局國民運動中心頁面與 Sportable 即時人流資料，地圖以點位呈現運動中心位置，並依泳池或健身房高使用率標示顏色。',
+    '可用於掌握新北市各國民運動中心目前泳池與健身房使用狀況，支援 Metro Taipei 公共運動設施營運監測。',
+    ARRAY[
+        'https://www.t-sports.ntpc.gov.tw/home.jsp?id=a6af86d2ea26b816',
+        'https://api.sportable.tw/api/v2/search/venues',
+        'https://api.sportable.tw/api/v2/statistics/people'
+    ],
+    ARRAY['doit'],
+    NOW(),
+    NOW(),
+    'three_d',
+    'SELECT name AS x_axis, ''pool'' AS icon, ''泳池目前人數'' AS y_axis, COALESCE(sw_people_num, 0)::int AS data FROM public.sports_center
+WHERE city = ''metrotaipei''
+UNION ALL
+SELECT name AS x_axis, ''pool'' AS icon, ''泳池容留人數'' AS y_axis, COALESCE(sw_max_people_num, 0)::int AS data FROM public.sports_center
+WHERE city = ''metrotaipei''
+UNION ALL
+SELECT name AS x_axis, ''fitness_center'' AS icon, ''健身房目前人數'' AS y_axis, COALESCE(gym_people_num, 0)::int AS data FROM public.sports_center
+WHERE city = ''metrotaipei''
+UNION ALL
+SELECT name AS x_axis, ''fitness_center'' AS icon, ''健身房容留人數'' AS y_axis, COALESCE(gym_max_people_num, 0)::int AS data FROM public.sports_center
+WHERE city = ''metrotaipei''
+ORDER BY x_axis, y_axis',
+    NULL,
+    'metrotaipei'
 );
 
 INSERT INTO public.dashboards ("index", name, components, icon, created_at, updated_at)
@@ -162,6 +232,27 @@ INSERT INTO public.dashboard_groups (dashboard_id, group_id)
 SELECT d.id, 2
 FROM public.dashboards d
 WHERE d."index" = 'sports-center-taipei'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.dashboards ("index", name, components, icon, created_at, updated_at)
+VALUES (
+    'sports-center-metrotaipei',
+    '運動中心',
+    ARRAY[(SELECT id FROM public.components WHERE "index" = 'sports_center')],
+    'fitness_center',
+    NOW(),
+    NOW()
+)
+ON CONFLICT ("index") DO UPDATE
+SET name = EXCLUDED.name,
+    components = EXCLUDED.components,
+    icon = EXCLUDED.icon,
+    updated_at = NOW();
+
+INSERT INTO public.dashboard_groups (dashboard_id, group_id)
+SELECT d.id, 3
+FROM public.dashboards d
+WHERE d."index" = 'sports-center-metrotaipei'
 ON CONFLICT DO NOTHING;
 
 SELECT setval('public.components_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.components), true);
