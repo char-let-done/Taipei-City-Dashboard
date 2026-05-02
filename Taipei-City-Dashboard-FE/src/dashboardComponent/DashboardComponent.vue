@@ -19,6 +19,7 @@ import GuageChart from "./components/GuageChart.vue";
 import RadarChart from "./components/RadarChart.vue";
 import TimelineSeparateChart from "./components/TimelineSeparateChart.vue";
 import TimelineStackedChart from "./components/TimelineStackedChart.vue";
+import DengueTrendChart from "./components/DengueTrendChart.vue";
 import MapLegend from "./components/MapLegend.vue";
 import MetroChart from "./components/MetroChart.vue";
 import HeatmapChart from "./components/HeatmapChart.vue";
@@ -199,6 +200,8 @@ function returnChartComponent(name, svg) {
 		return svg ? TimelineSeparateChartSvg : TimelineSeparateChart;
 	case "TimelineStackedChart":
 		return svg ? TimelineStackedChartSvg : TimelineStackedChart;
+	case "DengueTrendChart":
+		return svg ? TimelineStackedChartSvg : DengueTrendChart;
 	case "PolarAreaChart":
 		return svg ? PolarAreaChartSvg : PolarAreaChart;
 	case "IconPercentChart":

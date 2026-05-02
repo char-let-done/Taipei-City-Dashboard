@@ -12,6 +12,7 @@ export const chartTypes: chartType = {
 	MetroChart: "捷運行駛圖", // V
 	TimelineSeparateChart: "折線圖(比較)", // V
 	TimelineStackedChart: "折線圖(堆疊)", // V
+	DengueTrendChart: "登革熱趨勢圖",
 	GuageChart: "量表圖", // V
 	RadarChart: "雷達圖", // V
 	HeatmapChart: "熱力圖", // V
