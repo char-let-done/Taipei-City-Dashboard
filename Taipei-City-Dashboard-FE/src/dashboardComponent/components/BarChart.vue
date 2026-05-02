@@ -49,7 +49,7 @@ const displaySeries = computed(() => {
 function alignTotalLabels(chartContext) {
 	if (!showStacked.value) return;
 	const doAlign = () => {
-		const el = chartContext.el;
+		const {el} = chartContext;
 		if (!el) return;
 		const labels = el.querySelectorAll("text.apexcharts-datalabel");
 		if (!labels.length) return;
