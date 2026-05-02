@@ -197,3 +197,9 @@ SET components = ARRAY[
     ],
     updated_at = NOW()
 WHERE "index" = 'water-quality-taipei';
+
+INSERT INTO public.dashboard_groups (dashboard_id, group_id)
+SELECT d.id, 3
+FROM public.dashboards d
+WHERE d."index" = 'water-quality-taipei'
+ON CONFLICT DO NOTHING;
