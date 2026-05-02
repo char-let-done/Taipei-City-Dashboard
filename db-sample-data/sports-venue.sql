@@ -67,44 +67,11 @@ INSERT INTO public.component_maps ("index", title, type, source, size, icon, pai
 VALUES (
     'sports_venue',
     '運動場館',
-    'circle',
+    'symbol',
     'api',
     NULL,
-    NULL,
-    '{
-        "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10, 3,
-            14, [
-                "interpolate",
-                ["linear"],
-                ["to-number", ["get", "people_capacity"]],
-                0, 4,
-                100, 5,
-                500, 8,
-                3000, 12
-            ],
-            17, [
-                "interpolate",
-                ["linear"],
-                ["to-number", ["get", "people_capacity"]],
-                0, 6,
-                100, 8,
-                500, 12,
-                3000, 18
-            ]
-        ],
-        "circle-color": [
-            "case",
-            ["==", ["get", "is_open"], true], "#24B0DD",
-            "#8F98A3"
-        ],
-        "circle-opacity": 0.84,
-        "circle-stroke-color": "#ffffff",
-        "circle-stroke-width": 1
-    }'::json,
+    'gym_green',
+    '{}'::json,
     '[
         {"key":"photo_url","name":"照片","mode":"image"},
         {"key":"name","name":"場地名稱"},

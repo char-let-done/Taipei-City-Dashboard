@@ -54,29 +54,11 @@ INSERT INTO public.component_maps ("index", title, type, source, size, icon, pai
 VALUES (
     'sports_center',
     '運動中心',
-    'circle',
+    'symbol',
     'api',
     NULL,
-    NULL,
-    '{
-        "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10, 5,
-            14, 9,
-            17, 14
-        ],
-        "circle-color": [
-            "case",
-            [">=", ["coalesce", ["to-number", ["get", "gym_usage_rate"]], 0], 0.8], "#ED6A45",
-            [">=", ["coalesce", ["to-number", ["get", "sw_usage_rate"]], 0], 0.8], "#F8CF58",
-            "#24B0DD"
-        ],
-        "circle-opacity": 0.86,
-        "circle-stroke-color": "#ffffff",
-        "circle-stroke-width": 1.2
-    }'::json,
+    'gym_blue',
+    '{}'::json,
     '[
         {"key":"name","name":"名稱"},
         {"key":"address","name":"地址"},

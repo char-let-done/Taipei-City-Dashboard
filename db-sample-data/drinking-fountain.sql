@@ -94,21 +94,21 @@ VALUES
 (
     'drinking_fountain_taipei',
     '直飲臺',
-    'circle',
+    'symbol',
     'api',
-    'big',
     NULL,
-    '{"circle-color":["match",["get","status"],"正常","#56B96D","暫停","#ED6A45","暫停使用","#ED6A45","維修中","#F8CF58","#24B0DD"],"circle-opacity":0.82,"circle-stroke-color":"#ffffff","circle-stroke-width":1}',
+    'water_tap_blue',
+    '{}'::json,
     '[{"key":"place_name","name":"場所名稱"},{"key":"fountain_id","name":"直飲臺編號"},{"key":"status","name":"狀態"},{"key":"city","name":"市別"},{"key":"district","name":"行政區"},{"key":"place_type","name":"場所別"},{"key":"address","name":"地址"},{"key":"open_time","name":"開放時間"},{"key":"latest_sampled_at","name":"最近採樣時間"},{"key":"e_coli_count","name":"大腸桿菌數"},{"key":"quality_info_url","name":"水質及維護資訊"}]'
 ),
 (
     'drinking_fountain',
     '直飲臺',
-    'circle',
+    'symbol',
     'api',
-    'big',
     NULL,
-    '{"circle-color":["match",["get","status"],"正常","#56B96D","暫停","#ED6A45","暫停使用","#ED6A45","維修中","#F8CF58","#24B0DD"],"circle-opacity":0.82,"circle-stroke-color":"#ffffff","circle-stroke-width":1}',
+    'water_tap_blue',
+    '{}'::json,
     '[{"key":"place_name","name":"場所名稱"},{"key":"fountain_id","name":"直飲臺編號"},{"key":"status","name":"狀態"},{"key":"city","name":"市別"},{"key":"district","name":"行政區"},{"key":"place_type","name":"場所別"},{"key":"address","name":"地址"},{"key":"open_time","name":"開放時間"},{"key":"latest_sampled_at","name":"最近採樣時間"},{"key":"e_coli_count","name":"大腸桿菌數"},{"key":"quality_info_url","name":"水質及維護資訊"}]'
 );
 
