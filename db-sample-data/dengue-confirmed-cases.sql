@@ -32,9 +32,16 @@ CREATE INDEX IF NOT EXISTS dengue_confirmed_cases_diagnosis_date_idx
     ON public.dengue_confirmed_cases (diagnosis_date);
 
 CREATE OR REPLACE VIEW public.dengue_confirmed_cases_taipei AS
-SELECT *
+SELECT *,
+    SUBSTRING(diagnosis_date FROM 1 FOR 4) AS diagnosis_year
 FROM public.dengue_confirmed_cases
 WHERE residence_city IN ('台北市', '臺北市');
+
+CREATE OR REPLACE VIEW public.dengue_confirmed_cases_metrotaipei AS
+SELECT *,
+    SUBSTRING(diagnosis_date FROM 1 FOR 4) AS diagnosis_year
+FROM public.dengue_confirmed_cases
+WHERE residence_city IN ('台北市', '臺北市', '新北市');
 
 -- =====================================================
 -- 組件配置 (Manager DB)
@@ -50,7 +57,7 @@ INSERT INTO public.component_charts ("index", color, types, unit)
 VALUES (
     'dengue_confirmed_cases',
     ARRAY['#ED6A45', '#F8CF58', '#56B96D', '#24B0DD', '#E170A6', '#AF4137'],
-    ARRAY['TimelineStackedChart'],
+    ARRAY['DengueTrendChart'],
     '例'
 )
 ON CONFLICT ("index") DO UPDATE
@@ -59,7 +66,7 @@ SET color = EXCLUDED.color,
     unit = EXCLUDED.unit;
 
 DELETE FROM public.component_maps
-WHERE "index" IN ('dengue_confirmed_cases', 'dengue_confirmed_cases_taipei');
+WHERE "index" IN ('dengue_confirmed_cases', 'dengue_confirmed_cases_taipei', 'dengue_confirmed_cases_metrotaipei');
 
 INSERT INTO public.component_maps ("index", title, type, source, size, icon, paint, property)
 VALUES
@@ -71,21 +78,28 @@ VALUES
     NULL,
     NULL,
     '{"heatmap-weight":["interpolate",["linear"],["zoom"],10,0.7,16,1],"heatmap-intensity":["interpolate",["linear"],["zoom"],10,0.8,14,1.6,16,2.4],"heatmap-color":["interpolate",["linear"],["heatmap-density"],0,"rgba(36,176,221,0)",0.2,"#24B0DD",0.45,"#56B96D",0.7,"#F8CF58",1,"#ED6A45"],"heatmap-radius":["interpolate",["linear"],["zoom"],10,12,12,22,14,36,16,52],"heatmap-opacity":["interpolate",["linear"],["zoom"],10,0.72,15,0.86,17,0.62]}',
-    '[{"key":"diagnosis_date","name":"研判日期"},{"key":"onset_date","name":"發病日"},{"key":"residence_city","name":"居住縣市"},{"key":"residence_district","name":"居住區域"},{"key":"age_group","name":"年齡層"},{"key":"gender","name":"性別"},{"key":"is_imported","name":"境外移入"},{"key":"infection_country","name":"感染國家"},{"key":"serotype","name":"血清型"}]'
+    '[{"key":"diagnosis_year","name":"研判年份"},{"key":"diagnosis_date","name":"研判日期"},{"key":"onset_date","name":"發病日"},{"key":"residence_city","name":"居住縣市"},{"key":"residence_district","name":"居住區域"},{"key":"age_group","name":"年齡層"},{"key":"gender","name":"性別"},{"key":"is_imported","name":"境外移入"},{"key":"infection_country","name":"感染國家"},{"key":"serotype","name":"血清型"}]'
 ),
 (
-    'dengue_confirmed_cases',
+    'dengue_confirmed_cases_metrotaipei',
     '登革熱確定病例',
     'heatmap',
     'api',
     NULL,
     NULL,
     '{"heatmap-weight":["interpolate",["linear"],["zoom"],10,0.7,16,1],"heatmap-intensity":["interpolate",["linear"],["zoom"],10,0.8,14,1.6,16,2.4],"heatmap-color":["interpolate",["linear"],["heatmap-density"],0,"rgba(36,176,221,0)",0.2,"#24B0DD",0.45,"#56B96D",0.7,"#F8CF58",1,"#ED6A45"],"heatmap-radius":["interpolate",["linear"],["zoom"],10,12,12,22,14,36,16,52],"heatmap-opacity":["interpolate",["linear"],["zoom"],10,0.72,15,0.86,17,0.62]}',
-    '[{"key":"diagnosis_date","name":"研判日期"},{"key":"onset_date","name":"發病日"},{"key":"residence_city","name":"居住縣市"},{"key":"residence_district","name":"居住區域"},{"key":"age_group","name":"年齡層"},{"key":"gender","name":"性別"},{"key":"is_imported","name":"境外移入"},{"key":"infection_country","name":"感染國家"},{"key":"serotype","name":"血清型"}]'
+    '[{"key":"diagnosis_year","name":"研判年份"},{"key":"diagnosis_date","name":"研判日期"},{"key":"onset_date","name":"發病日"},{"key":"residence_city","name":"居住縣市"},{"key":"residence_district","name":"居住區域"},{"key":"age_group","name":"年齡層"},{"key":"gender","name":"性別"},{"key":"is_imported","name":"境外移入"},{"key":"infection_country","name":"感染國家"},{"key":"serotype","name":"血清型"}]'
 );
 
 DELETE FROM public.query_charts
-WHERE "index" = 'dengue_confirmed_cases' AND city IN ('taipei', 'metrotaipei');
+WHERE "index" IN ('dengue_confirmed_cases', 'dengue_confirmed_cases_yearly')
+    AND city IN ('taipei', 'metrotaipei');
+
+DELETE FROM public.component_charts
+WHERE "index" = 'dengue_confirmed_cases_yearly';
+
+DELETE FROM public.components
+WHERE "index" = 'dengue_confirmed_cases_yearly';
 
 INSERT INTO public.query_charts (
     "index",
@@ -114,7 +128,7 @@ VALUES
     'dengue_confirmed_cases',
     NULL,
     ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'dengue_confirmed_cases_taipei' ORDER BY id DESC LIMIT 1)],
-    '{"mode":"byParam","byParam":{"xParam":"is_imported"}}',
+    '{"mode":"byParam","byParam":{"xParam":"diagnosis_year"}}',
     'static',
     NULL,
     1,
@@ -148,8 +162,8 @@ VALUES
 (
     'dengue_confirmed_cases',
     NULL,
-    ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'dengue_confirmed_cases' ORDER BY id DESC LIMIT 1)],
-    '{"mode":"byParam","byParam":{"xParam":"is_imported"}}',
+    ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'dengue_confirmed_cases_metrotaipei' ORDER BY id DESC LIMIT 1)],
+    '{"mode":"byParam","byParam":{"xParam":"diagnosis_year"}}',
     'static',
     NULL,
     1,
