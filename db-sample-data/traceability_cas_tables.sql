@@ -13,3 +13,7 @@ CREATE TABLE IF NOT EXISTS public.cas_product (
     raw_data        JSONB,
     data_time       TEXT
 );
+
+-- 後端可依 ?slice= 選擇替代 SQL（見 traceability_cas_components.sql）
+ALTER TABLE public.query_charts
+    ADD COLUMN IF NOT EXISTS query_chart_slices jsonb DEFAULT '{}'::jsonb;

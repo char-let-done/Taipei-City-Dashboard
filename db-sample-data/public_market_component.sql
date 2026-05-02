@@ -19,31 +19,44 @@ SET color = EXCLUDED.color,
     types = EXCLUDED.types,
     unit = EXCLUDED.unit;
 
-DELETE FROM public.component_maps
-WHERE "index" IN ('public_market_tpe', 'public_market_new_tpe');
-
-INSERT INTO public.component_maps ("index", title, type, source, size, icon, paint, property)
-VALUES
-(
-    'public_market_tpe',
-    '公有市場',
-    'circle',
-    'geojson',
-    NULL,
-    NULL,
-    '{"circle-color": "#FF6B6B", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1}'::json,
-    '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"total_stalls","name":"攤位總數"},{"key":"food_drink","name":"飲食攤位"},{"key":"meat","name":"獸肉攤位"},{"key":"vegetable","name":"蔬菜攤位"}]'::json
-),
-(
-    'public_market_new_tpe',
-    '公有市場',
-    'circle',
-    'geojson',
-    NULL,
-    NULL,
-    '{"circle-color": "#4ECDC4", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1}'::json,
-    '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"phone","name":"電話"},{"key":"market_type","name":"營業類型"}]'::json
-);
+MERGE INTO public.component_maps AS m
+USING (
+    SELECT * FROM (VALUES
+        (
+            'public_market_tpe',
+            '公有市場',
+            'circle',
+            'geojson',
+            NULL::varchar,
+            NULL::varchar,
+            '{"circle-color": "#FF6B6B", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1}'::json,
+            '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"total_stalls","name":"攤位總數"},{"key":"food_drink","name":"飲食攤位"},{"key":"meat","name":"獸肉攤位"},{"key":"vegetable","name":"蔬菜攤位"}]'::json
+        ),
+        (
+            'public_market_new_tpe',
+            '公有市場',
+            'circle',
+            'geojson',
+            NULL::varchar,
+            NULL::varchar,
+            '{"circle-color": "#4ECDC4", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1}'::json,
+            '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"phone","name":"電話"},{"key":"market_type","name":"營業類型"}]'::json
+        )
+    ) AS v ("index", title, type, source, size, icon, paint, property)
+) AS l
+ON m."index" = l."index"
+WHEN MATCHED THEN
+    UPDATE SET
+        title = l.title,
+        type = l.type,
+        source = l.source,
+        size = l.size,
+        icon = l.icon,
+        paint = l.paint,
+        property = l.property
+WHEN NOT MATCHED THEN
+    INSERT ("index", title, type, source, size, icon, paint, property)
+    VALUES (l."index", l.title, l.type, l.source, l.size, l.icon, l.paint, l.property);
 
 DELETE FROM public.query_charts
 WHERE "index" = 'public_market' AND city IN ('taipei', 'metrotaipei');
@@ -74,7 +87,7 @@ VALUES
 (
     'public_market',
     NULL,
-    ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'public_market_tpe' ORDER BY id DESC LIMIT 1)],
+    ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'public_market_tpe' LIMIT 1)],
     '{}',
     'static',
     NULL,
@@ -97,8 +110,8 @@ VALUES
     'public_market',
     NULL,
     ARRAY[
-        (SELECT id FROM public.component_maps WHERE "index" = 'public_market_tpe' ORDER BY id DESC LIMIT 1),
-        (SELECT id FROM public.component_maps WHERE "index" = 'public_market_new_tpe' ORDER BY id DESC LIMIT 1)
+        (SELECT id FROM public.component_maps WHERE "index" = 'public_market_tpe' LIMIT 1),
+        (SELECT id FROM public.component_maps WHERE "index" = 'public_market_new_tpe' LIMIT 1)
     ],
     '{}',
     'static',

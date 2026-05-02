@@ -1,6 +1,10 @@
 -- =====================================================
 -- 產銷履歷抽驗結果 + CAS 認證產品 組件配置 SQL
 -- 需先執行 traceability_cas_tables.sql 建表
+--
+-- slice：後端 GET /component/:id/chart?slice=<key> 時，若 query_chart_slices
+--         JSON 內有該 key，則改用對應的 query_type + query_chart（多維圖表用）；
+--         不帶 slice 時仍用 query_chart 主查詢（合格／不合格匯總）。
 -- =====================================================
 
 SELECT setval('public.components_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.components), true);
@@ -14,8 +18,11 @@ ON CONFLICT ("index") DO UPDATE SET name = EXCLUDED.name;
 INSERT INTO public.component_charts ("index", color, types, unit)
 VALUES (
     'traceability_inspection',
-    ARRAY['#2ECC71','#E74C3C'],
-    ARRAY['DonutChart','BarChart'],
+    ARRAY[
+        '#2ECC71','#E74C3C','#3498DB','#9B59B6','#F39C12','#1ABC9C','#E67E22','#34495E',
+        '#16A085','#D35400','#8E44AD','#27AE60'
+    ],
+    ARRAY['TraceabilityInspectionRich'],
     '件'
 )
 ON CONFLICT ("index") DO UPDATE
@@ -39,8 +46,8 @@ VALUES
     NULL, NULL, NULL,
     'current', NULL, 1, 'hour',
     '農業部農業開放資料平臺',
-    '產銷履歷農產品抽驗合格率。',
-    '透過農業部產銷履歷農產品抽驗結果 API，即時呈現各抽樣地點的檢驗合格與不合格統計，綠色為合格、紅色為不合格。',
+    '產銷履歷農產品抽驗合格率與多維分析。',
+    '透過農業部產銷履歷農產品抽驗結果 API，整合合格／不合格構成、行政區堆疊、熱門品項（Treemap）、檢驗備註（Note）、按月合格率（民國 SamplingDate）與高不合格率品項等視角。',
     '適用於食安監控與農產品品質追蹤。',
     ARRAY['https://data.moa.gov.tw/api.aspx'],
     ARRAY['doit'],
@@ -55,8 +62,8 @@ VALUES
     NULL, NULL, NULL,
     'current', NULL, 1, 'hour',
     '農業部農業開放資料平臺',
-    '產銷履歷農產品抽驗合格率。',
-    '透過農業部產銷履歷農產品抽驗結果 API，即時呈現各抽樣地點的檢驗合格與不合格統計，綠色為合格、紅色為不合格。',
+    '產銷履歷農產品抽驗合格率與多維分析。',
+    '透過農業部產銷履歷農產品抽驗結果 API，整合合格／不合格構成、行政區堆疊、熱門品項（Treemap）、檢驗備註（Note）、按月合格率（民國 SamplingDate）與高不合格率品項等視角。',
     '適用於食安監控與農產品品質追蹤。',
     ARRAY['https://data.moa.gov.tw/api.aspx'],
     ARRAY['doit'],
@@ -128,6 +135,123 @@ VALUES
     NULL,
     'metrotaipei'
 );
+
+-- 抽驗元件：slice 對應 SQL（GET /component/:id/chart?slice=…）
+UPDATE public.query_charts
+SET query_chart_slices = jsonb_build_object(
+    'district_stack', jsonb_build_object(
+        'query_type', 'three_d',
+        'query_chart', $SQLDISTRICT$
+WITH base AS (
+    SELECT COALESCE(
+             CASE
+               WHEN sampling_location ~ '(?:臺北市|台北市|新北市).+?區'
+                 THEN (regexp_match(sampling_location, '(?:臺北市|台北市|新北市)(.+?區)'))[1]
+               ELSE NULL
+             END,
+             '其他') AS district,
+           inspect_result
+    FROM traceability_inspection
+    WHERE inspect_result IS NOT NULL AND sampling_location IS NOT NULL
+),
+districts AS (
+    SELECT DISTINCT district FROM base
+),
+counts AS (
+    SELECT district,
+           inspect_result AS result,
+           COUNT(*)::integer AS cnt
+    FROM base
+    GROUP BY district, inspect_result
+)
+SELECT d.district AS x_axis,
+       r.result AS y_axis,
+       COALESCE(c.cnt, 0) AS data
+FROM districts d
+CROSS JOIN (VALUES ('合格'), ('不合格')) AS r(result)
+LEFT JOIN counts c ON c.district = d.district AND c.result = r.result
+ORDER BY d.district, CASE WHEN r.result = '合格' THEN 1 ELSE 2 END
+$SQLDISTRICT$
+    ),
+    'product_volume', jsonb_build_object(
+        'query_type', 'two_d',
+        'query_chart', $SQLPROD$
+SELECT COALESCE(NULLIF(TRIM(raw_data->>'ProductName'),''), '(未填品名)') AS x_axis,
+       COUNT(*)::integer AS data
+FROM traceability_inspection
+GROUP BY 1
+ORDER BY data DESC
+LIMIT 45
+$SQLPROD$
+    ),
+    'inspect_note', jsonb_build_object(
+        'query_type', 'two_d',
+        'query_chart', $SQLNOTE$
+SELECT COALESCE(NULLIF(TRIM(raw_data->>'Note'),''), '(未填)') AS x_axis,
+       COUNT(*)::integer AS data
+FROM traceability_inspection
+WHERE raw_data IS NOT NULL
+GROUP BY 1
+ORDER BY data DESC
+LIMIT 35
+$SQLNOTE$
+    ),
+    'month_pass_rate', jsonb_build_object(
+        'query_type', 'two_d',
+        'query_chart', $SQLMONTH$
+WITH cleaned AS (
+    SELECT inspect_result,
+           NULLIF(TRIM(raw_data->>'SamplingDate'),'') AS sd
+    FROM traceability_inspection
+    WHERE inspect_result IS NOT NULL AND raw_data IS NOT NULL
+),
+parsed AS (
+    SELECT inspect_result,
+           CASE
+             WHEN LENGTH(sd) >= 5 AND sd ~ '^[0-9]+$'
+               THEN SUBSTRING(sd FROM 1 FOR 3) || '/' || SUBSTRING(sd FROM 4 FOR 2)
+             ELSE NULL
+           END AS ym
+    FROM cleaned
+)
+SELECT ym AS x_axis,
+       ROUND(
+           (100.0 * SUM(CASE WHEN inspect_result = '合格' THEN 1 ELSE 0 END)
+             / NULLIF(COUNT(*), 0))::numeric,
+           1
+       )::double precision AS data
+FROM parsed
+WHERE ym IS NOT NULL
+GROUP BY ym
+ORDER BY ym
+$SQLMONTH$
+    ),
+    'product_fail_rate', jsonb_build_object(
+        'query_type', 'two_d',
+        'query_chart', $SQLFAIL$
+WITH z AS (
+    SELECT COALESCE(NULLIF(TRIM(raw_data->>'ProductName'),''), '(未填品名)') AS product,
+           inspect_result
+    FROM traceability_inspection
+    WHERE inspect_result IS NOT NULL AND raw_data IS NOT NULL
+),
+agg AS (
+    SELECT product,
+           COUNT(*)::integer AS n_all,
+           SUM(CASE WHEN inspect_result = '不合格' THEN 1 ELSE 0 END)::integer AS n_fail
+    FROM z
+    GROUP BY product
+)
+SELECT product AS x_axis,
+       ROUND((100.0 * n_fail / NULLIF(n_all, 0))::numeric, 1)::double precision AS data
+FROM agg
+WHERE n_all >= 5 AND n_fail > 0
+ORDER BY data DESC, n_all DESC
+LIMIT 18
+$SQLFAIL$
+    )
+)
+WHERE "index" = 'traceability_inspection';
 
 -- ===== 加入「食安健康」儀表板（tpe + newtpe） =====
 

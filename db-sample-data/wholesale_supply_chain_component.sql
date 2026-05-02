@@ -15,7 +15,7 @@ VALUES (
     'wholesale_supply_chain',
     -- 順序與 map_config：臺北點、新北點、批發、蔬果弧、漁弧、肉弧、家禽弧（色與 arc paint 首色對齊）
     ARRAY['#2ECC71','#2ECC71','#E67E22','#27AE60','#2980B9','#C0392B','#8E44AD'],
-    ARRAY['MapLegend'],
+    ARRAY['WholesaleSupplyChainMap'],
     '公斤'
 )
 ON CONFLICT ("index") DO UPDATE
@@ -23,69 +23,74 @@ SET color = EXCLUDED.color,
     types = EXCLUDED.types,
     unit = EXCLUDED.unit;
 
--- Map layers
-DELETE FROM public.component_maps
-WHERE "index" IN (
-    'supply_chain_tpe', 'supply_chain_new_tpe', 'supply_chain_wholesale',
-    'supply_chain_arcs',
-    'supply_chain_arc_vf', 'supply_chain_arc_fish',
-    'supply_chain_arc_pork', 'supply_chain_arc_poultry'
-);
-
-INSERT INTO public.component_maps ("index", title, type, source, size, icon, paint, property)
-VALUES
--- 零售市場狀態 (circle)
-(
-    'supply_chain_tpe',
-    '供應鏈狀態（臺北）',
-    'circle', 'geojson', NULL, NULL,
-    '{"circle-color":["case",["get","supply_active"],"#2ECC71","#E74C3C"],"circle-radius":["interpolate",["linear"],["get","trust_score"],0,3,50,5,90,7],"circle-opacity":0.85,"circle-stroke-color":"#ffffff","circle-stroke-width":1.5}'::json,
-    '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"supply_active","name":"今日供貨"},{"key":"supply_categories","name":"供貨類別"},{"key":"total_items","name":"供應品項數"},{"key":"trust_score","name":"信任分數"},{"key":"status_text","name":"供應狀態"},{"key":"top_items_display","name":"主要供應品項"}]'::json
-),
-(
-    'supply_chain_new_tpe',
-    '供應鏈狀態（新北）',
-    'circle', 'geojson', NULL, NULL,
-    '{"circle-color":["case",["get","supply_active"],"#2ECC71","#E74C3C"],"circle-radius":["interpolate",["linear"],["get","trust_score"],0,3,50,5,90,7],"circle-opacity":0.85,"circle-stroke-color":"#ffffff","circle-stroke-width":1.5}'::json,
-    '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"supply_active","name":"今日供貨"},{"key":"supply_categories","name":"供貨類別"},{"key":"total_items","name":"供應品項數"},{"key":"trust_score","name":"信任分數"},{"key":"status_text","name":"供應狀態"}]'::json
-),
--- 批發市場點位 (symbol)
-(
-    'supply_chain_wholesale',
-    '批發市場',
-    'symbol', 'geojson', NULL, 'triangle_green',
-    '{}'::json,
-    '[{"key":"name","name":"市場名稱"},{"key":"type","name":"類型"},{"key":"district","name":"行政區"},{"key":"categories","name":"供貨類別"}]'::json
-),
--- 四類供應路線 (arc) — 各自獨立圖層，可個別 toggle
-(
-    'supply_chain_arc_vf',
-    '蔬果供應路線',
-    'arc', 'geojson', NULL, NULL,
-    '{"arc-color":["#27AE60","#2ECC71"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
-    '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
-),
-(
-    'supply_chain_arc_fish',
-    '漁產供應路線',
-    'arc', 'geojson', NULL, NULL,
-    '{"arc-color":["#2980B9","#3498DB"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
-    '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
-),
-(
-    'supply_chain_arc_pork',
-    '肉類供應路線',
-    'arc', 'geojson', NULL, NULL,
-    '{"arc-color":["#C0392B","#E74C3C"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
-    '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
-),
-(
-    'supply_chain_arc_poultry',
-    '家禽供應路線',
-    'arc', 'geojson', NULL, NULL,
-    '{"arc-color":["#8E44AD","#9B59B6"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
-    '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
-);
+-- Map layers：MERGE 依 "index" 同步，保留既有 id（PostgreSQL 15+）
+MERGE INTO public.component_maps AS m
+USING (
+    SELECT * FROM (VALUES
+        (
+            'supply_chain_tpe',
+            '供應鏈狀態（臺北）',
+            'circle', 'geojson', NULL::varchar, NULL::varchar,
+            '{"circle-color":["case",["get","supply_active"],"#2ECC71","#E74C3C"],"circle-radius":["interpolate",["linear"],["get","trust_score"],0,3,50,5,90,7],"circle-opacity":0.85,"circle-stroke-color":"#ffffff","circle-stroke-width":1.5}'::json,
+            '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"supply_active","name":"今日供貨"},{"key":"supply_categories","name":"供貨類別"},{"key":"total_items","name":"供應品項數"},{"key":"trust_score","name":"信任分數","hint":"0~100 食安信任指標：雙北產銷履歷檢驗合格率 60% + CAS 肉品認證覆蓋率 30% + 有供貨時基礎分 10%；數值愈高表示追溯與認證相關公開資料愈完整。無供貨時為 0。為區域統計加權模型，非單一市場實地評等。"},{"key":"status_text","name":"供應狀態"},{"key":"top_items_display","name":"主要供應品項"}]'::json
+        ),
+        (
+            'supply_chain_new_tpe',
+            '供應鏈狀態（新北）',
+            'circle', 'geojson', NULL::varchar, NULL::varchar,
+            '{"circle-color":["case",["get","supply_active"],"#2ECC71","#E74C3C"],"circle-radius":["interpolate",["linear"],["get","trust_score"],0,3,50,5,90,7],"circle-opacity":0.85,"circle-stroke-color":"#ffffff","circle-stroke-width":1.5}'::json,
+            '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"supply_active","name":"今日供貨"},{"key":"supply_categories","name":"供貨類別"},{"key":"total_items","name":"供應品項數"},{"key":"trust_score","name":"信任分數","hint":"0~100 食安信任指標：雙北產銷履歷檢驗合格率 60% + CAS 肉品認證覆蓋率 30% + 有供貨時基礎分 10%；數值愈高表示追溯與認證相關公開資料愈完整。無供貨時為 0。為區域統計加權模型，非單一市場實地評等。"},{"key":"status_text","name":"供應狀態"}]'::json
+        ),
+        (
+            'supply_chain_wholesale',
+            '批發市場',
+            'symbol', 'geojson', NULL::varchar, 'wholesale_depot',
+            '{}'::json,
+            '[{"key":"name","name":"市場名稱"},{"key":"type","name":"類型"},{"key":"district","name":"行政區"},{"key":"categories","name":"供貨類別"}]'::json
+        ),
+        (
+            'supply_chain_arc_vf',
+            '蔬果供應路線',
+            'arc', 'geojson', NULL::varchar, NULL::varchar,
+            '{"arc-color":["#27AE60","#2ECC71"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
+            '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
+        ),
+        (
+            'supply_chain_arc_fish',
+            '漁產供應路線',
+            'arc', 'geojson', NULL::varchar, NULL::varchar,
+            '{"arc-color":["#2980B9","#3498DB"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
+            '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
+        ),
+        (
+            'supply_chain_arc_pork',
+            '肉類供應路線',
+            'arc', 'geojson', NULL::varchar, NULL::varchar,
+            '{"arc-color":["#C0392B","#E74C3C"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
+            '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
+        ),
+        (
+            'supply_chain_arc_poultry',
+            '家禽供應路線',
+            'arc', 'geojson', NULL::varchar, NULL::varchar,
+            '{"arc-color":["#8E44AD","#9B59B6"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
+            '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
+        )
+    ) AS v ("index", title, type, source, size, icon, paint, property)
+) AS l
+ON m."index" = l."index"
+WHEN MATCHED THEN
+    UPDATE SET
+        title = l.title,
+        type = l.type,
+        source = l.source,
+        size = l.size,
+        icon = l.icon,
+        paint = l.paint,
+        property = l.property
+WHEN NOT MATCHED THEN
+    INSERT ("index", title, type, source, size, icon, paint, property)
+    VALUES (l."index", l.title, l.type, l.source, l.size, l.icon, l.paint, l.property);
 
 DELETE FROM public.query_charts
 WHERE "index" = 'wholesale_supply_chain' AND city IN ('taipei', 'metrotaipei');
