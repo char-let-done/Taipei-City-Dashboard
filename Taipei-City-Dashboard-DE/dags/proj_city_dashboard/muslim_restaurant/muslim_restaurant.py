@@ -42,6 +42,11 @@ def _transfer(**kwargs):
     }
     data = raw_data.rename(columns=col_map)
 
+    # Split combined cert_type (e.g. "MFR/MFT") into separate rows
+    data["cert_type"] = data["cert_type"].str.split("/")
+    data = data.explode("cert_type", ignore_index=True)
+    data["cert_type"] = data["cert_type"].str.strip()
+
     data["district"] = data["address"].str.extract(r"[台臺]北市(\S{2,3}區)")
     data["data_time"] = get_tpe_now_time_str(is_with_tz=True)
 
