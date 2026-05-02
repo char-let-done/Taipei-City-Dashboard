@@ -21,6 +21,7 @@ import TimelineSeparateChart from "./components/TimelineSeparateChart.vue";
 import TimelineStackedChart from "./components/TimelineStackedChart.vue";
 import MapLegend from "./components/MapLegend.vue";
 import WholesaleSupplyChainMap from "./components/WholesaleSupplyChainMap.vue";
+import TraceabilityInspectionRich from "./components/TraceabilityInspectionRich.vue";
 import MetroChart from "./components/MetroChart.vue";
 import HeatmapChart from "./components/HeatmapChart.vue";
 import PolarAreaChart from "./components/PolarAreaChart.vue";
@@ -186,6 +187,14 @@ function updateMouseLocation(e) {
 function changeShowTagTooltipState(state) {
 	showTagTooltip.value = state;
 }
+
+function dashboardChartExtraProps(chartType) {
+	if (chartType === "TraceabilityInspectionRich") {
+		return { componentId: props.config.id };
+	}
+	return {};
+}
+
 function returnChartComponent(name, svg) {
 	switch (name) {
 	case "DistrictChart":
@@ -196,6 +205,8 @@ function returnChartComponent(name, svg) {
 		return svg ? MapLegendSvg : MapLegend;
 	case "WholesaleSupplyChainMap":
 		return svg ? MapLegendSvg : WholesaleSupplyChainMap;
+	case "TraceabilityInspectionRich":
+		return svg ? TimelineStackedChartSvg : TraceabilityInspectionRich;
 	case "MetroChart":
 		return svg ? MetroChartSvg : MetroChart;
 	case "TimelineSeparateChart":
@@ -432,6 +443,7 @@ function returnChartComponent(name, svg) {
         :is="returnChartComponent(item)"
         v-for="item in config.chart_config.types"
         :key="`${props.config.index}-${item}-chart-${item.city}`"
+        v-bind="dashboardChartExtraProps(item)"
         :active-chart="activeChart"
         :active-city="activeCity"
         :chart_config="config.chart_config"

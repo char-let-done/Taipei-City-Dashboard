@@ -38,7 +38,7 @@ func GetComponentChartData(c *gin.Context) {
 	}
 
 	// 2. Get the chart data query and chart data type from the database
-	queryType, queryString, err := models.GetComponentChartDataQuery(id, query.City)
+	queryType, queryString, err := models.GetComponentChartDataQuery(id, query.City, query.Slice)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return

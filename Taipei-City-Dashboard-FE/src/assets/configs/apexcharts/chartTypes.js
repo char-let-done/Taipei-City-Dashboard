@@ -19,6 +19,7 @@ export const chartTypes = {
 	IndicatorChart: "指標圖",
 	MapLegend: "地圖圖例",
 	WholesaleSupplyChainMap: "市場供應鏈地圖",
+	TraceabilityInspectionRich: "履歷抽驗總覽",
 	TextUnitChart: "文字單位圖",
 	SportsVenueCapacityChart: "運動中心容量圖",
 };
@@ -26,6 +27,7 @@ export const chartTypes = {
 export const chartsPerDataType = {
 	two_d: [
 		"DonutChart",
+		"TraceabilityInspectionRich",
 		"BarChart",
 		"ColumnChart",
 		"TreemapChart",

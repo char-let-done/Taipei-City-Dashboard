@@ -2,6 +2,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -11,8 +12,14 @@ import (
 
 // ChartDataQuery is the model for getting the chart data query.
 type ChartDataQuery struct {
-	QueryType  string `json:"query_type" gorm:"column:query_type"`
-	QueryChart string `json:"query_chart" gorm:"column:query_chart"`
+	QueryType        string          `json:"query_type" gorm:"column:query_type"`
+	QueryChart       string          `json:"query_chart" gorm:"column:query_chart"`
+	QueryChartSlices json.RawMessage `json:"query_chart_slices" gorm:"column:query_chart_slices"`
+}
+
+type chartSliceConfig struct {
+	QueryType  string `json:"query_type"`
+	QueryChart string `json:"query_chart"`
 }
 
 // HistoryDataQuery is the model for getting the history data query.
@@ -114,12 +121,12 @@ type MapLegendData struct {
 
 /* ----- Handlers ----- */
 
-func GetComponentChartDataQuery(id int, city string) (queryType string, queryString string, err error) {
+func GetComponentChartDataQuery(id int, city string, slice string) (queryType string, queryString string, err error) {
 	var chartDataQuery ChartDataQuery
 
 	err = DBManager.
 		Table("components").
-		Select("query_charts.query_type, query_charts.query_chart").
+		Select("query_charts.query_type, query_charts.query_chart, query_charts.query_chart_slices").
 		Joins("LEFT JOIN query_charts ON components.index = query_charts.index").
 		Where("components.id = ?", id).
 		Where("query_charts.city = ?", city).
@@ -127,7 +134,23 @@ func GetComponentChartDataQuery(id int, city string) (queryType string, queryStr
 	if err != nil {
 		return queryType, queryString, err
 	}
-	return chartDataQuery.QueryType, chartDataQuery.QueryChart, nil
+
+	queryType = chartDataQuery.QueryType
+	queryString = chartDataQuery.QueryChart
+
+	if slice != "" && len(chartDataQuery.QueryChartSlices) > 0 && string(chartDataQuery.QueryChartSlices) != "null" {
+		var slices map[string]chartSliceConfig
+		if json.Unmarshal(chartDataQuery.QueryChartSlices, &slices) == nil {
+			if cfg, ok := slices[slice]; ok && cfg.QueryChart != "" {
+				queryString = cfg.QueryChart
+				if cfg.QueryType != "" {
+					queryType = cfg.QueryType
+				}
+			}
+		}
+	}
+
+	return queryType, queryString, nil
 }
 
 func GetComponentHistoryDataQuery(id int, city string, timeFrom string, timeTo string) (queryHistory string, err error) {

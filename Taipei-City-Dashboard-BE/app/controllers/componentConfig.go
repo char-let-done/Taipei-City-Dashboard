@@ -30,6 +30,7 @@ GET /api/v1/component
 
 type componentQuery struct {
 	City		  string `form:"city"`
+	Slice         string `form:"slice"`
 	PageSize      int    `form:"pagesize"`
 	PageNum       int    `form:"pagenum"`
 	Sort          string `form:"sort"`
