@@ -40,19 +40,19 @@ VALUES
     '供應鏈狀態（臺北）',
     'circle', 'geojson', NULL, NULL,
     '{"circle-color":["case",["get","supply_active"],"#2ECC71","#E74C3C"],"circle-radius":["interpolate",["linear"],["get","trust_score"],0,3,50,5,90,7],"circle-opacity":0.85,"circle-stroke-color":"#ffffff","circle-stroke-width":1.5}'::json,
-    '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"supply_active","name":"今日供貨"},{"key":"supply_categories","name":"供貨���別"},{"key":"total_items","name":"供應品項數"},{"key":"trust_score","name":"信任分數"},{"key":"status_text","name":"供應狀態"},{"key":"top_items_display","name":"主要供應品項"}]'::json
+    '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"supply_active","name":"今日供貨"},{"key":"supply_categories","name":"供貨類別"},{"key":"total_items","name":"供應品項數"},{"key":"trust_score","name":"信任分數"},{"key":"status_text","name":"供應狀態"},{"key":"top_items_display","name":"主要供應品項"}]'::json
 ),
 (
     'supply_chain_new_tpe',
-    '��應鏈狀態（��北）',
+    '供應鏈狀態（新北）',
     'circle', 'geojson', NULL, NULL,
     '{"circle-color":["case",["get","supply_active"],"#2ECC71","#E74C3C"],"circle-radius":["interpolate",["linear"],["get","trust_score"],0,3,50,5,90,7],"circle-opacity":0.85,"circle-stroke-color":"#ffffff","circle-stroke-width":1.5}'::json,
-    '[{"key":"name","name":"市場��稱"},{"key":"district","name":"行政區"},{"key":"supply_active","name":"今日供貨"},{"key":"supply_categories","name":"供貨類別"},{"key":"total_items","name":"供應品項數"},{"key":"trust_score","name":"信任分數"},{"key":"status_text","name":"供應狀態"}]'::json
+    '[{"key":"name","name":"市場名稱"},{"key":"district","name":"行政區"},{"key":"supply_active","name":"今日供貨"},{"key":"supply_categories","name":"供貨類別"},{"key":"total_items","name":"供應品項數"},{"key":"trust_score","name":"信任分數"},{"key":"status_text","name":"供應狀態"}]'::json
 ),
 -- 批發市場點位 (symbol)
 (
     'supply_chain_wholesale',
-    '���發市場',
+    '批發市場',
     'symbol', 'geojson', NULL, 'triangle_green',
     '{}'::json,
     '[{"key":"name","name":"市場名稱"},{"key":"type","name":"類型"},{"key":"district","name":"行政區"},{"key":"categories","name":"供貨類別"}]'::json
@@ -67,7 +67,7 @@ VALUES
 ),
 (
     'supply_chain_arc_fish',
-    '漁產供應路��',
+    '漁產供應路線',
     'arc', 'geojson', NULL, NULL,
     '{"arc-color":["#2980B9","#3498DB"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
     '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
@@ -77,14 +77,14 @@ VALUES
     '肉類供應路線',
     'arc', 'geojson', NULL, NULL,
     '{"arc-color":["#C0392B","#E74C3C"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
-    '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供���類別"}]'::json
+    '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
 ),
 (
     'supply_chain_arc_poultry',
     '家禽供應路線',
     'arc', 'geojson', NULL, NULL,
     '{"arc-color":["#8E44AD","#9B59B6"],"arc-width":2,"arc-opacity":0.5,"arc-animate":true}'::json,
-    '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市��"},{"key":"category","name":"供貨類別"}]'::json
+    '[{"key":"wholesale_name","name":"批發市場"},{"key":"retail_name","name":"零售市場"},{"key":"category","name":"供貨類別"}]'::json
 );
 
 DELETE FROM public.query_charts
@@ -119,7 +119,7 @@ VALUES
     ARRAY['doit'],
     NOW(), NOW(),
     'three_d',
-    'SELECT CASE category WHEN ''vegetable_fruit'' THEN ''��果'' WHEN ''fishery'' THEN ''漁產'' WHEN ''pork'' THEN ''肉類'' WHEN ''poultry'' THEN ''家禽'' END AS x_axis, market_name AS y_axis, COALESCE(total_quantity, 0)::integer AS data FROM wholesale_daily_summary ORDER BY total_quantity DESC',
+    'SELECT CASE category WHEN ''vegetable_fruit'' THEN ''蔬果'' WHEN ''fishery'' THEN ''漁產'' WHEN ''pork'' THEN ''肉類'' WHEN ''poultry'' THEN ''家禽'' END AS x_axis, market_name AS y_axis, COALESCE(total_quantity, 0)::integer AS data FROM wholesale_daily_summary ORDER BY total_quantity DESC',
     NULL,
     'taipei'
 ),
@@ -138,11 +138,11 @@ VALUES
     '{"mode":"byLayerToggle"}',
     'current', NULL, 1, 'hour',
     '農業部農業開放資料平臺',
-    '即時推演雙北公有市場的���發供貨狀態與食安信任分數。',
-    '透過農產��批發市場交易行情(蔬果/豬肉/漁產/��禽)API，結合供應鏈對應表與���銷履歷/CAS驗證資料，即時推演雙北79間公有市場的供貨狀態。',
+    '即時推演雙北公有市場的批發供貨狀態與食安信任分數。',
+    '透過農產品批發市場交易行情(蔬果/豬肉/漁產/家禽)API，結合供應鏈對應表與產銷履歷/CAS驗證資料，即時推演雙北79間公有市場的供貨狀態。',
     '適用於跨域食安監控與市場管理。',
     ARRAY['https://data.moa.gov.tw/api.aspx'],
-    ARRAY['doit'],
+    ARRAY['doit','ntpc'],
     NOW(), NOW(),
     'three_d',
     'SELECT CASE category WHEN ''vegetable_fruit'' THEN ''蔬果'' WHEN ''fishery'' THEN ''漁產'' WHEN ''pork'' THEN ''肉類'' WHEN ''poultry'' THEN ''家禽'' END AS x_axis, market_name AS y_axis, COALESCE(total_quantity, 0)::integer AS data FROM wholesale_daily_summary ORDER BY total_quantity DESC',
@@ -150,11 +150,11 @@ VALUES
     'metrotaipei'
 );
 
--- 加入「食安健康」儀表板 (冪等)
+-- 加入「食安健康」儀表板 (冪等)：支援單一儀表板 index 或臺北/新北分開命名
 UPDATE public.dashboards
 SET components = array_append(components, (SELECT id FROM public.components WHERE "index" = 'wholesale_supply_chain')),
     updated_at = NOW()
-WHERE "index" = 'food_safety_health_tpe'
+WHERE "index" IN ('food_safety_health', 'food_safety_health_tpe')
   AND NOT ((SELECT id FROM public.components WHERE "index" = 'wholesale_supply_chain') = ANY(components));
 
 SELECT setval('public.components_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.components), true);

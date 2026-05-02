@@ -119,5 +119,28 @@ VALUES
     'metrotaipei'
 );
 
+-- 加入「食安健康」儀表板（含雙北視角），並確保掛載 metrotaipei 群組
+UPDATE public.dashboards
+SET components = array_append(
+        COALESCE(components, '{}'),
+        (SELECT id FROM public.components WHERE "index" = 'public_market')
+    ),
+    updated_at = NOW()
+WHERE "index" IN ('food_safety_health', 'food_safety_health_tpe')
+  AND NOT (
+      (SELECT id FROM public.components WHERE "index" = 'public_market')
+      = ANY (COALESCE(components, '{}'))
+  );
+
+INSERT INTO public.dashboard_groups (dashboard_id, group_id)
+SELECT d.id, 3
+FROM public.dashboards d
+WHERE d."index" IN ('food_safety_health', 'food_safety_health_tpe')
+  AND NOT EXISTS (
+      SELECT 1
+      FROM public.dashboard_groups dg
+      WHERE dg.dashboard_id = d.id AND dg.group_id = 3
+  );
+
 SELECT setval('public.components_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.components), true);
 SELECT setval('public.component_maps_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.component_maps), true);
