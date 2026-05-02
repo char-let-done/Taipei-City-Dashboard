@@ -38,7 +38,7 @@
     "output_coordinate": "EPSG:4326",
     "is_geometry": 1,
     "dataset_description": "登革熱確定病例每日統計資料，包含發病日、個案研判日、居住地區、年齡層、性別、是否境外移入等資訊。",
-    "etl_description": "從 CDC 開放資料下載登革熱確定病例 JSON，篩選台北市且具有座標之案例，轉換經緯度為 WKB 幾何後寫入 PostgreSQL。",
+    "etl_description": "從 CDC 開放資料下載登革熱確定病例 JSON，篩選臺北市與新北市且具有座標之案例，轉換經緯度為 WKB 幾何後寫入 PostgreSQL。",
     "sensitivity": "public"
   }
 }
