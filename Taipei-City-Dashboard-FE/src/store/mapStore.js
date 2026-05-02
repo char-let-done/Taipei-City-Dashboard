@@ -82,6 +82,8 @@ export const useMapStore = defineStore("map", {
 		viewPoints: [],
 		marker: null,
 		tempMarkerCoordinates: null,
+		// Store layer IDs added by the chatbot
+		chatAddedLayers: [],
 		// Store the user's current location,
 		userLocation: { latitude: null, longitude: null },
 		// 3D Mrt Map 相關參數
@@ -2625,6 +2627,15 @@ export const useMapStore = defineStore("map", {
 				duration: 1000,
 			});
 		},
+		// 2-1. Fly to a location with zoom
+		flyToLocationWithZoom(lng, lat, zoom) {
+			if (!this.map) return;
+			this.map.flyTo({
+				center: [lng, lat],
+				zoom: zoom,
+				duration: 1000,
+			});
+		},
 		// 3. Force map to resize after sidebar collapses
 		resizeMap() {
 			if (this.map) {
@@ -2938,6 +2949,7 @@ export const useMapStore = defineStore("map", {
 				this.currentLayers = [];
 				this.mapConfigs = {};
 				this.currentVisibleLayers = [];
+				this.chatAddedLayers = [];
 				this.removePopup();
 				return;
 			}
@@ -2954,6 +2966,7 @@ export const useMapStore = defineStore("map", {
 			this.currentLayers = [];
 			this.mapConfigs = {};
 			this.currentVisibleLayers = [];
+			this.chatAddedLayers = [];
 			this.removePopup();
 		},
 		// 2. Called when user navigates away from the map
@@ -2970,8 +2983,46 @@ export const useMapStore = defineStore("map", {
 			this.mapConfigs = {};
 			this.map = null;
 			this.currentVisibleLayers = [];
+			this.chatAddedLayers = [];
 			this.removePopup();
 			this.tempMarkerCoordinates = null;
+		},
+		// 3. Add map layers from chatbot and track them
+		addChatMapLayers(map_configs) {
+			if (!map_configs || map_configs.length === 0) return;
+			map_configs.forEach((element) => {
+				const mapLayerId = `${element.index}-${element.type}-${element.city}`;
+				this.addToMapLayerList([element]);
+				if (!this.chatAddedLayers.includes(mapLayerId)) {
+					this.chatAddedLayers.push(mapLayerId);
+				}
+			});
+		},
+		// 4. Remove only chatbot-added layers
+		clearChatLayers() {
+			if (!this.map) {
+				this.chatAddedLayers = [];
+				return;
+			}
+			this.chatAddedLayers.forEach((layerId) => {
+				if (this.map.getLayer(`${layerId}-flow`)) {
+					this.map.removeLayer(`${layerId}-flow`);
+				}
+				if (this.map.getLayer(layerId)) {
+					this.map.removeLayer(layerId);
+				}
+				if (this.map.getSource(`${layerId}-source`)) {
+					this.map.removeSource(`${layerId}-source`);
+				}
+				this.currentLayers = this.currentLayers.filter(
+					(el) => el !== layerId,
+				);
+				this.currentVisibleLayers = this.currentVisibleLayers.filter(
+					(el) => el !== layerId,
+				);
+				delete this.mapConfigs[layerId];
+			});
+			this.chatAddedLayers = [];
 		},
 	},
 });

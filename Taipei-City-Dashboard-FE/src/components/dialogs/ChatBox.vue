@@ -8,14 +8,17 @@ import UserLogo from "../icons/UserLogo.vue";
 import { useChatStore } from "../../store/chatStore";
 import { useContentStore } from "../../store/contentStore";
 import { useAuthStore } from "../../store/authStore";
+import { useMapStore } from "../../store/mapStore";
+import router from "../../router/index";
 import http from "../../router/axios";
 
 const chatStore = useChatStore();
 const contentStore = useContentStore();
 const authStore = useAuthStore();
-const { addChatData, addQueryData, saveChatLog } = chatStore;
+const mapStore = useMapStore();
+const { addChatData, addGeoQueryData, saveChatLog, clearChatData } = chatStore;
 const { createDashboard } = contentStore;
-const { chatData } = storeToRefs(chatStore);
+const { chatData, geoQueryResult } = storeToRefs(chatStore);
 const { editDashboard } = storeToRefs(contentStore);
 const { user } = storeToRefs(authStore);
 
@@ -64,12 +67,65 @@ const qaBtnHandler = async (text, relations) => {
 
 const sendBtnHandler = (text) => {
 	if (!text.trim()) return;
-	addQueryData({
+	addGeoQueryData({
 		role: "user",
 		content: text,
 	});
 	userMessage.value = "";
 };
+
+const executeGeoQueryOnMap = async (result) => {
+	if (!result || !result.location) return;
+
+	// Navigate to mapview if not already there
+	if (authStore.currentPath !== "mapview") {
+		await router.push({
+			name: "mapview",
+			query: { index: "map-layers-taipei", city: "taipei" },
+		});
+	}
+
+	// Wait for map to be ready
+	await new Promise((resolve) => {
+		const check = () => {
+			if (mapStore.map) {
+				resolve();
+			} else {
+				setTimeout(check, 200);
+			}
+		};
+		check();
+	});
+
+	// Clear previous chat layers
+	mapStore.clearChatLayers();
+
+	// Fly to location with zoom
+	mapStore.flyToLocationWithZoom(
+		result.location.lng,
+		result.location.lat,
+		result.location.zoom,
+	);
+
+	// Drop marker
+	mapStore.marker
+		.setLngLat({ lng: result.location.lng, lat: result.location.lat })
+		.addTo(mapStore.map);
+
+	// Add component map layers
+	if (result.components && result.components.length > 0) {
+		for (const comp of result.components) {
+			if (comp.map_config && comp.map_config.length > 0) {
+				mapStore.addChatMapLayers(comp.map_config);
+			}
+		}
+	}
+};
+
+watch(geoQueryResult, async (result) => {
+	if (!result) return;
+	await executeGeoQueryOnMap(result);
+});
 
 const toggleSticky = () => {
 	isStickyOpen.value = !isStickyOpen.value;
@@ -92,6 +148,12 @@ watch(
     <!-- 標題 -->
     <div class="header">
       <h3>臺北城市儀表板小幫手</h3>
+      <button
+        class="clear-btn"
+        @click="clearChatData"
+      >
+        清除對話
+      </button>
     </div>
 
     <!-- 聊天區 -->
@@ -274,12 +336,29 @@ $radius-20: 20px;
 		padding: 1rem;
 		background: $panel-bg;
 		border-bottom: 3px solid $border-color;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 
 		h3 {
 			font-size: 18px;
 			font-weight: 700;
 			color: $white;
 			margin: 0;
+		}
+
+		.clear-btn {
+			background: transparent;
+			border: 1px solid $border-color;
+			color: $white;
+			font-size: 12px;
+			padding: 4px 10px;
+			border-radius: $radius-10;
+			cursor: pointer;
+
+			&:hover {
+				background: $card-bg;
+			}
 		}
 	}
 
