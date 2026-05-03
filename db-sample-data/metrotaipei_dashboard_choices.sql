@@ -227,11 +227,7 @@ VALUES
 (
     'map-layers-taipei',
     '圖資資訊',
-    ARRAY[
-        (SELECT id::integer FROM public.components WHERE "index" = 'bike_map'),
-        (SELECT id::integer FROM public.components WHERE "index" = 'eco_cup_store'),
-        (SELECT id::integer FROM public.components WHERE "index" = 'eco_cup_district')
-    ],
+    '{}'::integer[],
     'public',
     NOW(),
     NOW()
@@ -239,11 +235,7 @@ VALUES
 (
     'map-layers-metrotaipei',
     '圖資資訊',
-    ARRAY[
-        (SELECT id::integer FROM public.components WHERE "index" = 'bike_map'),
-        (SELECT id::integer FROM public.components WHERE "index" = 'eco_cup_store'),
-        (SELECT id::integer FROM public.components WHERE "index" = 'eco_cup_district')
-    ],
+    '{}'::integer[],
     'public',
     NOW(),
     NOW()
@@ -278,6 +270,11 @@ VALUES
     ((SELECT id FROM public.dashboards WHERE "index" = 'map-layers-taipei'), 2),
     ((SELECT id FROM public.dashboards WHERE "index" = 'map-layers-metrotaipei'), 3)
 ON CONFLICT DO NOTHING;
+
+UPDATE public.dashboards
+SET components = '{}'::integer[],
+    updated_at = NOW()
+WHERE "index" IN ('map-layers-taipei', 'map-layers-metrotaipei');
 
 SELECT setval('public.components_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.components), true);
 SELECT setval('public.dashboards_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.dashboards), true);
