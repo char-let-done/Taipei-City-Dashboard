@@ -15,6 +15,7 @@ Testing: Jack Huang (Data Scientist), Ian Huang (Data Analysis Intern)
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import DashboardComponent from "../dashboardComponent/DashboardComponent.vue";
+import { compositeComponents } from "../dashboardComponent/utilities/compositeComponents";
 import { useContentStore } from "../store/contentStore";
 import { useDialogStore } from "../store/dialogStore";
 import { useMapStore } from "../store/mapStore";
@@ -247,13 +248,15 @@ function popularBasicLayerGA(map_config) {
                 );
 
               if (selectedData) {
-                mapStore.clearByParamFilter(item.map_config);
-                mapStore.turnOffMapLayerVisibility(
-                  item.map_config,
-                );
-                mapStore.addToMapLayerList(
-                  selectedData.map_config,
-                );
+                if (!compositeComponents[item.index]) {
+                  mapStore.clearByParamFilter(item.map_config);
+                  mapStore.turnOffMapLayerVisibility(
+                    item.map_config,
+                  );
+                  mapStore.addToMapLayerList(
+                    selectedData.map_config,
+                  );
+                }
 
                 contentStore.setComponentData(
                   componentIndex,
@@ -383,13 +386,15 @@ function popularBasicLayerGA(map_config) {
                 );
 
               if (selectedData) {
-                mapStore.clearByParamFilter(item.map_config);
-                mapStore.turnOffMapLayerVisibility(
-                  item.map_config,
-                );
-                mapStore.addToMapLayerList(
-                  selectedData.map_config,
-                );
+                if (!compositeComponents[item.index]) {
+                  mapStore.clearByParamFilter(item.map_config);
+                  mapStore.turnOffMapLayerVisibility(
+                    item.map_config,
+                  );
+                  mapStore.addToMapLayerList(
+                    selectedData.map_config,
+                  );
+                }
 
                 contentStore.setComponentData(
                   componentIndex,

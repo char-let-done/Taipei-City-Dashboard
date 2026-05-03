@@ -117,6 +117,12 @@ export const useContentStore = defineStore("content", {
 				if (chartRes.data.categories) {
 					comp.chart_config.categories = chartRes.data.categories;
 				}
+				if (comp.map_config && comp.city) {
+					comp.map_config = comp.map_config.map((m) => ({
+						...m,
+						city: comp.city,
+					}));
+				}
 				return comp;
 			} catch (error) {
 				console.error(

@@ -187,8 +187,12 @@ async function prefetchCompositeData() {
 	if (!activeFilter.value && compositeFilters.value.length > 0) {
 		const firstKey = compositeFilters.value[0].key;
 		if (subComponentsCache.value[firstKey]) {
+			const oldConfig = displayConfig.value;
 			activeFilter.value = firstKey;
 			activeChart.value = getDefaultChart(firstKey);
+			if (toggleOn.value) {
+				swapMapLayers(oldConfig, subComponentsCache.value[firstKey]);
+			}
 		}
 	}
 }
@@ -199,6 +203,12 @@ onMounted(() => {
 
 watch(() => props.activeCity, () => {
 	if (!isComposite.value) return;
+	if (toggleOn.value) {
+		const oldMap = displayConfig.value?.map_config;
+		if (oldMap && oldMap[0]) {
+			emits("swapMapConfig", oldMap, null);
+		}
+	}
 	subComponentsCache.value = {};
 	activeFilter.value = null;
 	prefetchCompositeData();
