@@ -100,6 +100,8 @@ export const useMapStore = defineStore("map", {
 		flowLineIntervals: {},
 		// 儲存行政區熱力圖資料（key: layer index, value: { districtData, baseColor, city }）
 		districtFillData: {},
+		// Stores fetched GeoJSON by layer id so fill layers can be recolored for api and local sources.
+		geojsonSourceData: {},
 	}),
 	actions: {
 		/* Initialize Mapbox */
@@ -674,6 +676,9 @@ export const useMapStore = defineStore("map", {
 				});
 				data = updatedData;
 			}
+			this.geojsonSourceData[map_config.layerId] = JSON.parse(
+				JSON.stringify(data),
+			);
 			if (
 				!["voronoi", "isoline"].includes(map_config.type) &&
 				map_config.type !== "symbol-3d"
@@ -705,8 +710,8 @@ export const useMapStore = defineStore("map", {
 				const sourceId = `${layerId}-source`;
 				if (!this.map || !this.map.getSource(sourceId)) return;
 
-				axios.get(`/mapData/${index}.geojson`).then((rs) => {
-					const {data} = rs;
+				const applyDistrictData = (sourceData) => {
+					const data = JSON.parse(JSON.stringify(sourceData));
 					data.features.forEach((feature) => {
 						const districtName = feature.properties.TNAME;
 						const countyName = feature.properties.PNAME;
@@ -734,6 +739,15 @@ export const useMapStore = defineStore("map", {
 						0,
 						0.6,
 					]);
+				};
+
+				if (this.geojsonSourceData[layerId]) {
+					applyDistrictData(this.geojsonSourceData[layerId]);
+					return;
+				}
+
+				axios.get(`/mapData/${index}.geojson`).then((rs) => {
+					applyDistrictData(rs.data);
 				});
 			});
 		},
@@ -990,6 +1004,53 @@ export const useMapStore = defineStore("map", {
 			this.mapConfigs[map_config.layerId] = map_config;
 			if (!this.currentVisibleLayers.includes(map_config.layerId)) {
 				this.currentVisibleLayers.push(map_config.layerId);
+			}
+			// If district fill data was already cached before the layer existed, apply paint now
+			if (
+				map_config.type === "fill" &&
+				this.districtFillData[map_config.index]
+			) {
+				const {
+					districtData,
+					baseColor,
+					city,
+				} = this.districtFillData[map_config.index];
+				const highest = districtData.highest || 1;
+				const targetCities =
+					city === "metrotaipei"
+						? ["taipei", "metrotaipei"]
+						: [city];
+				targetCities.forEach((c) => {
+					const expectedLayerId = `${map_config.index}-fill-${c}`;
+					if (
+						expectedLayerId === map_config.layerId &&
+						this.map.getLayer(expectedLayerId)
+					) {
+						this.map.setPaintProperty(
+							expectedLayerId,
+							"fill-color",
+							[
+								"interpolate",
+								["linear"],
+								["get", "count"],
+								0,
+								"#E8F5E9",
+								highest,
+								baseColor,
+							],
+						);
+						this.map.setPaintProperty(
+							expectedLayerId,
+							"fill-opacity",
+							[
+								"case",
+								["<", ["get", "count"], 0],
+								0,
+								0.6,
+							],
+						);
+					}
+				});
 			}
 			this.loadingLayers = this.loadingLayers.filter(
 				(el) => el !== map_config.layerId,

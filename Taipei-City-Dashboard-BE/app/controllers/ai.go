@@ -266,22 +266,27 @@ const geoQuerySystemPrompt = `你是一位台北城市儀表板的數據助理�
 輸出格式必須是以下 JSON，不要有任何其他文字或 markdown 格式：
 {
   "location": "行政區名稱，若問題中沒有提到任何行政區則填 null",
+  "map_action": "replace 或 append",
   "selected_component_indices": ["組件index_1", "組件index_2", ...],
   "summary": "一段根據實際數字生成的純事實總結，使用繁體中文"
 }
 
 規則：
 1. location 必須是上面列表中的名稱，或 null。
-2. selected_component_indices 從提供的組件中選出最相關的 1-3 個。
-3. summary 必須基於實際 chart 數據，不要臆測。若數據中找不到該行政區的資料，請如實說明。
-4. 只輸出 JSON，不要有任何其他文字。`
+2. map_action 用來控制地圖圖層：若使用者說「疊加、加上、再開、保留目前圖層、一起看、overlay、append」等意思，填 append；否則填 replace。
+3. selected_component_indices 從提供的組件中選出最相關的 1-3 個。
+4. 若使用者只要求開啟或疊加圖層，可以不需要 location。
+5. summary 必須基於實際 chart 數據，不要臆測。若數據中找不到該行政區的資料，請如實說明。
+6. 只輸出 JSON，不要有任何其他文字。`
 
 type geoQueryInput struct {
-	Query string `json:"query" binding:"required"`
+	Query         string   `json:"query" binding:"required"`
+	CurrentLayers []string `json:"current_visible_layers"`
 }
 
 type geoQueryLLMOutput struct {
 	Location                 string   `json:"location"`
+	MapAction                string   `json:"map_action"`
 	SelectedComponentIndices []string `json:"selected_component_indices"`
 	Summary                  string   `json:"summary"`
 }
@@ -313,6 +318,23 @@ func defaultTimeRange() (string, string) {
 	timeFrom := time.Date(1990, 1, 1, 0, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60)).Format(layout)
 	timeTo := time.Now().Format(layout)
 	return timeFrom, timeTo
+}
+
+func normalizeGeoQueryMapAction(action string, query string) string {
+	action = strings.ToLower(strings.TrimSpace(action))
+	if action == "append" || action == "replace" {
+		return action
+	}
+
+	appendKeywords := []string{
+		"疊", "疊加", "加上", "再開", "再加", "一起看", "保留", "不要清", "overlay", "append",
+	}
+	for _, keyword := range appendKeywords {
+		if strings.Contains(query, keyword) {
+			return "append"
+		}
+	}
+	return "replace"
 }
 
 type simplifiedComponent struct {
@@ -431,8 +453,9 @@ func GeoQuery(c *gin.Context) {
 	// 3. Build prompt
 	compJSON, _ := json.Marshal(components)
 	userPrompt := fmt.Sprintf(
-		"使用者問題：%s\n\n相關組件與數據：%s",
+		"使用者問題：%s\n\n目前已開啟圖層：%v\n\n相關組件與數據：%s",
 		input.Query,
+		input.CurrentLayers,
 		string(compJSON),
 	)
 
@@ -473,17 +496,19 @@ func GeoQuery(c *gin.Context) {
 		return
 	}
 
-	// If no location found, fallback
-	if llmResp.Location == "" || llmResp.Location == "null" {
-		c.JSON(http.StatusOK, gin.H{"status": "success", "fallback": true})
-		return
-	}
+	mapAction := normalizeGeoQueryMapAction(llmResp.MapAction, input.Query)
 
-	// 6. Resolve location coordinates
-	center, ok := models.ResolveDistrictCenter(llmResp.Location)
-	if !ok {
-		c.JSON(http.StatusOK, gin.H{"status": "success", "fallback": true})
-		return
+	// 6. Resolve location coordinates if the user mentioned a supported district.
+	var location interface{}
+	if llmResp.Location != "" && llmResp.Location != "null" {
+		if center, ok := models.ResolveDistrictCenter(llmResp.Location); ok {
+			location = gin.H{
+				"name": llmResp.Location,
+				"lng":  center.Lng,
+				"lat":  center.Lat,
+				"zoom": center.Zoom,
+			}
+		}
 	}
 
 	// 7. Gather selected full components (with map_config)
@@ -517,14 +542,10 @@ func GeoQuery(c *gin.Context) {
 
 	// 8. Return structured response
 	c.JSON(http.StatusOK, gin.H{
-		"status":   "success",
-		"fallback": false,
-		"location": gin.H{
-			"name": llmResp.Location,
-			"lng":  center.Lng,
-			"lat":  center.Lat,
-			"zoom": center.Zoom,
-		},
+		"status":     "success",
+		"fallback":   false,
+		"location":   location,
+		"map_action": mapAction,
 		"components": selectedComponents,
 		"summary":    llmResp.Summary,
 	})

@@ -2,6 +2,73 @@
 -- 食物相關傳染病行政區分布組件 (infectious_food_disease_district)
 -- =====================================================
 
+CREATE TABLE IF NOT EXISTS public.infectious_food_disease_district_monthly (
+    data_time timestamp with time zone NOT NULL,
+    year integer NOT NULL,
+    month integer NOT NULL,
+    district text NOT NULL,
+    total_case_count integer DEFAULT 0,
+    _ctime timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    _mtime timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    ogc_fid serial PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS public.infectious_food_disease_district_monthly_history (
+    data_time timestamp with time zone NOT NULL,
+    year integer NOT NULL,
+    month integer NOT NULL,
+    district text NOT NULL,
+    total_case_count integer DEFAULT 0,
+    _ctime timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    _mtime timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    ogc_fid serial PRIMARY KEY
+);
+
+CREATE INDEX IF NOT EXISTS infectious_food_disease_district_monthly_time_idx
+    ON public.infectious_food_disease_district_monthly (data_time);
+
+CREATE INDEX IF NOT EXISTS infectious_food_disease_district_monthly_district_idx
+    ON public.infectious_food_disease_district_monthly (district);
+
+DO $$
+BEGIN
+    IF to_regclass('public.tp_district') IS NOT NULL THEN
+        EXECUTE $view$
+            CREATE OR REPLACE VIEW public.infectious_food_disease_district_map AS
+            WITH latest_time AS (
+                SELECT MAX(data_time) AS data_time
+                FROM public.infectious_food_disease_district_monthly
+            ),
+            latest_counts AS (
+                SELECT
+                    district,
+                    MAX(data_time) AS data_time,
+                    MAX(year) AS year,
+                    MAX(month) AS month,
+                    SUM(total_case_count)::int AS count
+                FROM public.infectious_food_disease_district_monthly
+                WHERE data_time = (SELECT data_time FROM latest_time)
+                    AND district <> '總計'
+                GROUP BY district
+            )
+            SELECT
+                ROW_NUMBER() OVER (ORDER BY d.tname) AS ogc_fid,
+                '臺北市'::text AS "PNAME",
+                d.tname AS "TNAME",
+                d.tname AS district,
+                COALESCE(c.count, 0)::int AS count,
+                COALESCE(c.count, 0)::int AS total_case_count,
+                c.data_time,
+                c.year,
+                c.month,
+                d.wkb_geometry
+            FROM public.tp_district d
+            LEFT JOIN latest_counts c
+                ON d.tname = c.district
+        $view$;
+    END IF;
+END $$;
+
 INSERT INTO public.components ("index", name)
 VALUES ('infectious_food_disease_district', '食物相關傳染病行政區分布')
 ON CONFLICT ("index") DO UPDATE SET name = EXCLUDED.name;
@@ -17,6 +84,21 @@ ON CONFLICT ("index") DO UPDATE
 SET color = EXCLUDED.color,
     types = EXCLUDED.types,
     unit = EXCLUDED.unit;
+
+DELETE FROM public.component_maps
+WHERE "index" = 'infectious_food_disease_district_map';
+
+INSERT INTO public.component_maps ("index", title, type, source, size, icon, paint, property)
+VALUES (
+    'infectious_food_disease_district_map',
+    '食物相關傳染病行政區分布',
+    'fill',
+    'geojson',
+    NULL,
+    NULL,
+    '{"fill-color":["interpolate",["linear"],["get","count"],0,"#FDEDE8",1,"#F6B39E",5,"#ED6A45"],"fill-opacity":["case",["<",["get","count"],0],0,0.6],"fill-outline-color":"#FFFFFF"}',
+    '[{"key":"TNAME","name":"行政區"},{"key":"count","name":"病例數"}]'
+);
 
 DELETE FROM public.query_charts
 WHERE "index" = 'infectious_food_disease_district' AND city IN ('taipei');
@@ -47,8 +129,8 @@ VALUES
 (
     'infectious_food_disease_district',
     NULL,
-    '{}',
-    '{}',
+    ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'infectious_food_disease_district_map' ORDER BY id DESC LIMIT 1)],
+    '{"mode":"byParam","byParam":{"xParam":"TNAME"}}',
     'static',
     NULL,
     1,
@@ -62,7 +144,7 @@ VALUES
     NOW(),
     NOW(),
     'two_d',
-    'SELECT district as x_axis, SUM(total_case_count)::int as data FROM public.infectious_food_disease_district_monthly WHERE data_time = (SELECT MAX(data_time) FROM public.infectious_food_disease_district_monthly) GROUP BY district ORDER BY data DESC',
+    'SELECT district as x_axis, SUM(total_case_count)::int as data FROM public.infectious_food_disease_district_monthly WHERE data_time = (SELECT MAX(data_time) FROM public.infectious_food_disease_district_monthly) AND district <> ''總計'' GROUP BY district ORDER BY data DESC',
     NULL,
     'taipei'
 );
@@ -92,4 +174,14 @@ VALUES
     ((SELECT id FROM public.dashboards WHERE "index" = 'food_safety_health'), 2)
 ON CONFLICT DO NOTHING;
 
+UPDATE public.dashboards
+SET components = array_append(
+        components,
+        (SELECT id::integer FROM public.components WHERE "index" = 'infectious_food_disease_district')
+    ),
+    updated_at = NOW()
+WHERE "index" = 'map-layers-taipei'
+  AND NOT (components @> ARRAY[(SELECT id::integer FROM public.components WHERE "index" = 'infectious_food_disease_district')]);
+
 SELECT setval('public.components_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.components), true);
+SELECT setval('public.component_maps_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.component_maps), true);
