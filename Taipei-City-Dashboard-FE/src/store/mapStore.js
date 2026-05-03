@@ -1143,11 +1143,15 @@ export const useMapStore = defineStore("map", {
 			paintSettings["arc-color"] = paintSettings["arc-color"]
 				? paintSettings["arc-color"]
 				: ["#ffffff"];
+			// 市場供應鏈四類弧線：預設不繪製，由 WholesaleSupplyChainMap 開關還原 data
+			const isWholesaleSupplyChainArc =
+				typeof map_config.index === "string" &&
+				map_config.index.startsWith("supply_chain_arc_");
 			// formatted data（id 須含 city，否則雙北 deck.gl 圖層 id 重複會無法隨城市切換）
 			const layerConfig = {
 				id: mapLayerId,
 				visible: true,
-				data: data.features,
+				data: isWholesaleSupplyChainArc ? [] : data.features,
 				getSourcePosition: (d) => d.geometry.coordinates[0],
 				getTargetPosition: (d) => d.geometry.coordinates[1],
 				// color format: [r, g, b, [a]]

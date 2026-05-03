@@ -1,6 +1,6 @@
 <!-- 市場供應鏈：弧線圖層獨立開關（依 map_config 的 arc 圖層） -->
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 
 const props = defineProps([
 	"chart_config",
@@ -25,7 +25,7 @@ function layerKey(layer) {
 	return `${layer.index}-${layer.city}`;
 }
 
-/** 圖層鍵（index-city）-> 是否顯示；切換臺北/新北時鍵變化會整組重設為顯示 */
+/** 圖層鍵（index-city）-> 是否顯示；切換臺北/新北時鍵變化會整組重設為關閉 */
 const arcVisible = ref({});
 
 watch(
@@ -33,9 +33,14 @@ watch(
 	() => {
 		const next = {};
 		for (const l of arcLayers.value) {
-			next[layerKey(l)] = true;
+			next[layerKey(l)] = false;
 		}
 		arcVisible.value = next;
+		nextTick(() => {
+			for (const l of arcLayers.value) {
+				emits("toggleLayer", props.map_config, l.title, false);
+			}
+		});
 	},
 	{ immediate: true },
 );
@@ -62,7 +67,7 @@ function onArcChange(layer, checked) {
         <label class="wsc-map-switch">
           <input
             type="checkbox"
-            :checked="arcVisible[layerKey(layer)] !== false"
+            :checked="arcVisible[layerKey(layer)] === true"
             @change="onArcChange(layer, $event.target.checked)"
           >
           <span class="wsc-map-slider" />
