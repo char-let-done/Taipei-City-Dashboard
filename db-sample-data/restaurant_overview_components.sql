@@ -7,6 +7,32 @@
 
 SELECT setval('public.components_id_seq', (SELECT COALESCE(MAX(id), 0) FROM public.components), true);
 
+-- ===== 0. Fix map_config_ids for sub-components =====
+-- The demo COPY may assign different component_maps IDs than expected.
+-- Patch query_charts to reference the actual IDs by index lookup.
+
+UPDATE public.query_charts
+SET map_config_ids = ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'muslim_restaurant_tpe' ORDER BY id DESC LIMIT 1)]
+WHERE "index" = 'muslim_restaurant' AND city = 'taipei';
+
+UPDATE public.query_charts
+SET map_config_ids = ARRAY[
+    (SELECT id FROM public.component_maps WHERE "index" = 'muslim_restaurant_tpe' ORDER BY id DESC LIMIT 1),
+    (SELECT id FROM public.component_maps WHERE "index" = 'muslim_restaurant_ntpc' ORDER BY id DESC LIMIT 1)
+]
+WHERE "index" = 'muslim_restaurant' AND city = 'metrotaipei';
+
+UPDATE public.query_charts
+SET map_config_ids = ARRAY[(SELECT id FROM public.component_maps WHERE "index" = 'hygiene_restaurant_tpe' ORDER BY id DESC LIMIT 1)]
+WHERE "index" = 'hygiene_restaurant' AND city = 'taipei';
+
+UPDATE public.query_charts
+SET map_config_ids = ARRAY[
+    (SELECT id FROM public.component_maps WHERE "index" = 'hygiene_restaurant_tpe' ORDER BY id DESC LIMIT 1),
+    (SELECT id FROM public.component_maps WHERE "index" = 'hygiene_restaurant_ntpc' ORDER BY id DESC LIMIT 1)
+]
+WHERE "index" = 'hygiene_restaurant' AND city = 'metrotaipei';
+
 -- ===== 1. 組件 =====
 
 INSERT INTO public.components ("index", name)
