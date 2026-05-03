@@ -75,7 +75,11 @@ const sendBtnHandler = (text) => {
 };
 
 const executeGeoQueryOnMap = async (result) => {
-	if (!result || !result.location) return;
+	if (!result) return;
+
+	const hasLocation = Boolean(result.location);
+	const hasComponents = result.components && result.components.length > 0;
+	if (!hasLocation && !hasComponents) return;
 
 	// Navigate to mapview if not already there
 	if (authStore.currentPath !== "mapview") {
@@ -97,23 +101,33 @@ const executeGeoQueryOnMap = async (result) => {
 		check();
 	});
 
-	// Clear previous chat layers
-	mapStore.clearChatLayers();
+	const mapAction = result.map_action || "replace";
+	if (mapAction === "clear") {
+		mapStore.clearChatLayers();
+		return;
+	}
 
-	// Fly to location with zoom
-	mapStore.flyToLocationWithZoom(
-		result.location.lng,
-		result.location.lat,
-		result.location.zoom,
-	);
+	// Clear previous chat layers unless the assistant explicitly appends layers.
+	if (mapAction !== "append") {
+		mapStore.clearChatLayers();
+	}
 
-	// Drop marker
-	mapStore.marker
-		.setLngLat({ lng: result.location.lng, lat: result.location.lat })
-		.addTo(mapStore.map);
+	if (hasLocation) {
+		// Fly to location with zoom
+		mapStore.flyToLocationWithZoom(
+			result.location.lng,
+			result.location.lat,
+			result.location.zoom,
+		);
+
+		// Drop marker
+		mapStore.marker
+			.setLngLat({ lng: result.location.lng, lat: result.location.lat })
+			.addTo(mapStore.map);
+	}
 
 	// Add component map layers
-	if (result.components && result.components.length > 0) {
+	if (hasComponents) {
 		for (const comp of result.components) {
 			if (comp.map_config && comp.map_config.length > 0) {
 				mapStore.addChatMapLayers(comp.map_config);

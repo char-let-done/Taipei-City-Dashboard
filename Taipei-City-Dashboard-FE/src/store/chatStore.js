@@ -1,6 +1,7 @@
 import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import http from "../router/axios";
+import { useMapStore } from "./mapStore";
 
 export const useChatStore = defineStore('chat', () => {
   	// 預設訊息
@@ -138,10 +139,12 @@ export const useChatStore = defineStore('chat', () => {
 	const addGeoQueryData = async (newChatData) => {
 		chatData.value.push({ id: chatData.value.length + 1, isDefault: false, ...newChatData });
 		geoQueryResult.value = null;
+		const mapStore = useMapStore();
 
 		try {
 			const response = await http.post("/ai/chat/geo-query", {
 				query: newChatData.content,
+				current_visible_layers: mapStore.currentVisibleLayers,
 			});
 
 			if (response.data?.fallback) {
@@ -151,7 +154,7 @@ export const useChatStore = defineStore('chat', () => {
 			}
 
 			const {data} = response;
-			if (data?.location && data?.summary) {
+			if ((data?.location || data?.components?.length > 0) && data?.summary) {
 				geoQueryResult.value = data;
 				chatData.value.push({
 					id: chatData.value.length + 1,
