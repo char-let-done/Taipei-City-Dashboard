@@ -14,14 +14,27 @@ import cross_normal from "../assets/map/cross_normal.png";
 import cctv from "../assets/map/cctv.png";
 import live from "../assets/map/live.png";
 
-const eco_cup = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%234CAF50'/%3E%3C/svg%3E";
+function svgData(svg) {
+	return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function pinSvg(color, paths) {
+	return svgData(`
+		<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+			${paths.replaceAll('fill="#fff"', `fill="${color}"`)}
+		</svg>
+	`);
+}
+
 const customIcons = {
-	basket_blue: { icon: "shopping_basket", color: "#24B0DD" },
-	company_green: { icon: "business", color: "#56B96D" },
-	water_tap_blue: { icon: "faucet", color: "#24B0DD" },
-	water_drop_green: { icon: "water_drop", color: "#56B96D" },
-	gym_green: { icon: "fitness_center", color: "#56B96D" },
-	gym_blue: { icon: "fitness_center", color: "#24B0DD" },
+	restaurant_blue: pinSvg("#24B0DD", '<path fill="#fff" d="M10 8h2v7h1V8h2v7.5a3 3 0 0 1-2 2.83V24h-2v-5.67a3 3 0 0 1-2-2.83V8Zm10 0c2.2 1.9 3 4.15 3 7v2h-3v7h-2V8h2Z"/>'),
+	basket_blue: pinSvg("#24B0DD", '<path fill="#fff" d="M10.1 13h11.8l-1.2 9H11.3l-1.2-9Zm3.3-4.4 1.6.9-2 3.5h-1.8l2.2-4.4Zm5.2 0 2.2 4.4H19l-2-3.5 1.6-.9ZM13 16v4h1.6v-4H13Zm4.4 0v4H19v-4h-1.6Z"/>'),
+	company_green: pinSvg("#56B96D", '<path fill="#fff" d="M9 23V9h9v4h5v10H9Zm3-2h2v-2h-2v2Zm0-4h2v-2h-2v2Zm0-4h2v-2h-2v2Zm4 8h2v-2h-2v2Zm0-4h2v-2h-2v2Zm0-4h2v-2h-2v2Zm4 8h1v-6h-1v6Z"/>'),
+	water_tap_blue: pinSvg("#24B0DD", '<path fill="#fff" d="M12 9h7v2h-2v2h4a3 3 0 0 1 3 3v2h-2v-2a1 1 0 0 0-1-1h-6v-4h-3V9Zm3 6v2H8v-2h7Zm-3 4c1.4 1.35 2 2.25 2 3.1a2 2 0 1 1-4 0c0-.85.6-1.75 2-3.1Z"/>'),
+	water_drop_green: pinSvg("#56B96D", '<path fill="#fff" d="M16 7c4 4.55 6 7.45 6 10.3A6 6 0 0 1 10 17.3C10 14.45 12 11.55 16 7Zm-3.2 10.7a3.4 3.4 0 0 0 3.5 3.3v-2a1.45 1.45 0 0 1-1.5-1.3h-2Z"/>'),
+	gym_green: pinSvg("#56B96D", '<path fill="#fff" d="M7 14h2v-2h2v8H9v-2H7v-4Zm4 1h10v2H11v-2Zm10-3h2v2h2v4h-2v2h-2v-8Z"/>'),
+	gym_blue: pinSvg("#24B0DD", '<path fill="#fff" d="M7 14h2v-2h2v8H9v-2H7v-4Zm4 1h10v2H11v-2Zm10-3h2v2h2v4h-2v2h-2v-8Z"/>'),
+	eco_cup: pinSvg("#24B0DD", '<path fill="#fff" d="M11 9h9l-1 14h-7L11 9Zm1.5-2h6l.4 2h-6.8l.4-2Zm2 6 .35 7h1.8L17 13h-2.5Z"/>'),
 };
 
 const props = defineProps([
@@ -64,8 +77,6 @@ function returnIcon(name) {
 		return cctv;
 	case "live":
 		return live;
-	case "eco_cup":
-		return eco_cup;
 	default:
 		return "";
 	}
@@ -73,6 +84,21 @@ function returnIcon(name) {
 
 function returnCustomIcon(name) {
 	return customIcons[name] || null;
+}
+
+function heatmapGradient(item, index) {
+	if (item.icon === "dengue_heatmap") {
+		return "linear-gradient(90deg, #ED6A45 0%, #F8CF58 100%)";
+	}
+	if (item.icon === "valve_heatmap") {
+		return "linear-gradient(90deg, #24B0DD 0%, #A7D8FF 55%, #8F98A3 100%)";
+	}
+	if (item.type === "heatmap" || item.icon === "heatmap") {
+		return props.chart_config?.color?.[index]
+			? `linear-gradient(90deg, ${props.chart_config.color[index]}, #8F98A3)`
+			: "linear-gradient(90deg, #24B0DD, #8F98A3)";
+	}
+	return null;
 }
 
 const selectedIndex = ref(null);
@@ -132,13 +158,16 @@ function handleDataSelection(index) {
         @click="handleDataSelection(index)"
       >
         <!-- Show different icons for different map types -->
-        <span
+        <img
           v-if="returnCustomIcon(item.icon)"
-          class="maplegend-material-icon"
-          :style="{ backgroundColor: returnCustomIcon(item.icon).color }"
+          class="maplegend-custom-icon"
+          :src="returnCustomIcon(item.icon)"
         >
-          {{ returnCustomIcon(item.icon).icon }}
-        </span>
+        <div
+          v-else-if="heatmapGradient(item, index)"
+          class="maplegend-heatmap"
+          :style="{ background: heatmapGradient(item, index) }"
+        />
         <div
           v-else-if="item.type !== 'symbol'"
           :style="{
@@ -205,21 +234,20 @@ button {
 
 			div:first-child,
 			img,
-			.maplegend-material-icon {
-				width: var(--font-ms);
-				margin-right: 0.75rem;
+			.maplegend-custom-icon,
+			.maplegend-heatmap {
+				width: 1.75rem;
+				margin-right: 0.6rem;
 			}
 
-			.maplegend-material-icon {
-				height: var(--font-ms);
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				border-radius: 50%;
-				color: white;
-				font-family: var(--font-icon);
-				font-size: 0.75rem;
-				line-height: 1;
+			.maplegend-custom-icon {
+				height: 1.75rem;
+				flex-shrink: 0;
+			}
+
+			.maplegend-heatmap {
+				height: 0.55rem;
+				border-radius: 999px;
 				flex-shrink: 0;
 			}
 

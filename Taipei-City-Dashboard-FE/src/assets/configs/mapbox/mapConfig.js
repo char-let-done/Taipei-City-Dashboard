@@ -334,15 +334,15 @@ export const maplayerCommonPaint = {
 			["linear"],
 			["zoom"],
 			11.99,
-			3.5,
+			4.5,
 			12,
-			3.5,
+			6,
 			13.5,
-			4,
+			7.5,
 			15,
-			5,
+			9,
 			22,
-			7,
+			10.5,
 		],
 	},
 	"fill-extrusion": {
@@ -416,6 +416,12 @@ export const maplayerCommonLayout = {
 			0.5,
 		],
 	},
+	"symbol-big": {
+		"icon-allow-overlap": true,
+		"icon-ignore-placement": true,
+		"icon-padding": 0,
+		"icon-size": 0.6,
+	},
 	"symbol-metro": {
 		"icon-image": "metro",
 		"icon-size": [
@@ -451,6 +457,9 @@ export const maplayerCommonLayout = {
 	"symbol-triangle_white": {
 		"icon-image": "triangle_white",
 	},
+	"symbol-restaurant_blue": {
+		"icon-image": "restaurant_blue",
+	},
 	"symbol-basket_blue": {
 		"icon-image": "basket_blue",
 	},
@@ -462,6 +471,9 @@ export const maplayerCommonLayout = {
 	},
 	"symbol-water_drop_green": {
 		"icon-image": "water_drop_green",
+	},
+	"symbol-eco_cup": {
+		"icon-image": "eco_cup",
 	},
 	"symbol-gym_green": {
 		"icon-image": "gym_green",

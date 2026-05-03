@@ -45,7 +45,7 @@ VALUES (
     'circle',
     'geojson',
     NULL,
-    NULL,
+    'eco_cup',
     '{"circle-color": "#4CAF50"}',
     '[{"key":"brand","name":"品牌"},{"key":"store_name","name":"門市名稱"},{"key":"address","name":"地址"},{"key":"phone","name":"電話"}]'
 )

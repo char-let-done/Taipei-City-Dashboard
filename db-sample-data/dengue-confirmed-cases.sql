@@ -76,7 +76,7 @@ VALUES
     'heatmap',
     'api',
     NULL,
-    NULL,
+    'dengue_heatmap',
     '{"heatmap-weight":["interpolate",["linear"],["zoom"],10,0.7,16,1],"heatmap-intensity":["interpolate",["linear"],["zoom"],10,0.8,14,1.6,16,2.4],"heatmap-color":["interpolate",["linear"],["heatmap-density"],0,"rgba(36,176,221,0)",0.2,"#24B0DD",0.45,"#56B96D",0.7,"#F8CF58",1,"#ED6A45"],"heatmap-radius":["interpolate",["linear"],["zoom"],10,12,12,22,14,36,16,52],"heatmap-opacity":["interpolate",["linear"],["zoom"],10,0.72,15,0.86,17,0.62]}',
     '[{"key":"diagnosis_year","name":"研判年份"},{"key":"diagnosis_date","name":"研判日期"},{"key":"onset_date","name":"發病日"},{"key":"residence_city","name":"居住縣市"},{"key":"residence_district","name":"居住區域"},{"key":"age_group","name":"年齡層"},{"key":"gender","name":"性別"},{"key":"is_imported","name":"境外移入"},{"key":"infection_country","name":"感染國家"},{"key":"serotype","name":"血清型"}]'
 ),
@@ -86,7 +86,7 @@ VALUES
     'heatmap',
     'api',
     NULL,
-    NULL,
+    'dengue_heatmap',
     '{"heatmap-weight":["interpolate",["linear"],["zoom"],10,0.7,16,1],"heatmap-intensity":["interpolate",["linear"],["zoom"],10,0.8,14,1.6,16,2.4],"heatmap-color":["interpolate",["linear"],["heatmap-density"],0,"rgba(36,176,221,0)",0.2,"#24B0DD",0.45,"#56B96D",0.7,"#F8CF58",1,"#ED6A45"],"heatmap-radius":["interpolate",["linear"],["zoom"],10,12,12,22,14,36,16,52],"heatmap-opacity":["interpolate",["linear"],["zoom"],10,0.72,15,0.86,17,0.62]}',
     '[{"key":"diagnosis_year","name":"研判年份"},{"key":"diagnosis_date","name":"研判日期"},{"key":"onset_date","name":"發病日"},{"key":"residence_city","name":"居住縣市"},{"key":"residence_district","name":"居住區域"},{"key":"age_group","name":"年齡層"},{"key":"gender","name":"性別"},{"key":"is_imported","name":"境外移入"},{"key":"infection_country","name":"感染國家"},{"key":"serotype","name":"血清型"}]'
 );

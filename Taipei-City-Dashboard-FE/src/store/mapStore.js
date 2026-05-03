@@ -231,7 +231,8 @@ export const useMapStore = defineStore("map", {
 				const cleanupSource = () => {
 					if (!this.map) return;
 					try {
-						if (this.map.getLayer(layerId)) this.map.removeLayer(layerId);
+						if (this.map.getLayer(layerId))
+							this.map.removeLayer(layerId);
 						if (this.map.getSource(sourceId))
 							this.map.removeSource(sourceId);
 					} catch {
@@ -332,7 +333,10 @@ export const useMapStore = defineStore("map", {
 
 				setTimeout(() => {
 					if (!this.map || settled) return;
-					if (this.map.getSource(sourceId) && !this.map.getLayer(layerId)) {
+					if (
+						this.map.getSource(sourceId) &&
+						!this.map.getLayer(layerId)
+					) {
 						console.warn(
 							"[map] taipei_building_3d: TileJSON did not yield a mountable layer in time",
 						);
@@ -428,10 +432,12 @@ export const useMapStore = defineStore("map", {
 		// 3. Adds symbols that will be used by some map layers
 		async addSymbolSources() {
 			const customIcons = {
+				restaurant_blue: { icon: "restaurant", color: "#74B078" },
 				basket_blue: { icon: "shopping_basket", color: "#24B0DD" },
 				company_green: { icon: "business", color: "#56B96D" },
 				water_tap_blue: { icon: "faucet", color: "#24B0DD" },
 				water_drop_green: { icon: "water_drop", color: "#56B96D" },
+				eco_cup: { icon: "local_cafe", color: "#24B0DD" },
 				gym_green: { icon: "fitness_center", color: "#56B96D" },
 				gym_blue: { icon: "fitness_center", color: "#24B0DD" },
 			};
@@ -467,17 +473,10 @@ export const useMapStore = defineStore("map", {
 				canvas.height = size;
 				const context = canvas.getContext("2d");
 				context.fillStyle = config.color;
-				context.beginPath();
-				context.arc(size / 2, size / 2, 40, 0, Math.PI * 2);
-				context.fill();
-				context.strokeStyle = "#ffffff";
-				context.lineWidth = 6;
-				context.stroke();
-				context.fillStyle = "#ffffff";
-				context.font = "48px 'Material Icons Round'";
+				context.font = "72px 'Material Icons Round'";
 				context.textAlign = "center";
 				context.textBaseline = "middle";
-				context.fillText(config.icon, size / 2, size / 2 + 2);
+				context.fillText(config.icon, size / 2, size / 2 + 3);
 				this.map.addImage(id, context.getImageData(0, 0, size, size), {
 					pixelRatio: 2,
 				});
@@ -537,9 +536,13 @@ export const useMapStore = defineStore("map", {
 			ctx.fillStyle = "#A9DFBF";
 			ctx.fillRect(32, 62, 16, 12);
 			ctx.fillRect(80, 62, 16, 12);
-			this.map.addImage("wholesale_depot", ctx.getImageData(0, 0, size, size), {
-				pixelRatio: 1,
-			});
+			this.map.addImage(
+				"wholesale_depot",
+				ctx.getImageData(0, 0, size, size),
+				{
+					pixelRatio: 1,
+				},
+			);
 		},
 		// 4. Toggle district boundaries
 		toggleDistrictBoundaries(status) {
@@ -654,7 +657,9 @@ export const useMapStore = defineStore("map", {
 		},
 		fetchApiGeoJson(map_config) {
 			axios
-				.get(`${import.meta.env.VITE_API_URL}/map-data/${map_config.index}`)
+				.get(
+					`${import.meta.env.VITE_API_URL}/map-data/${map_config.index}`,
+				)
 				.then((rs) => {
 					this.addGeojsonSource(map_config, rs.data);
 				})
@@ -663,8 +668,12 @@ export const useMapStore = defineStore("map", {
 		// 3-1. Add a local geojson as a source in mapbox
 		addGeojsonSource(map_config, data) {
 			// If this is a fill layer and we have district data stored, inject count properties
-			if (map_config.type === "fill" && this.districtFillData[map_config.index]) {
-				const { districtData } = this.districtFillData[map_config.index];
+			if (
+				map_config.type === "fill" &&
+				this.districtFillData[map_config.index]
+			) {
+				const { districtData } =
+					this.districtFillData[map_config.index];
 				const updatedData = JSON.parse(JSON.stringify(data));
 				updatedData.features.forEach((feature) => {
 					const districtName = feature.properties.TNAME;
@@ -702,7 +711,8 @@ export const useMapStore = defineStore("map", {
 		setDistrictFillData(index, districtData, baseColor, city) {
 			this.districtFillData[index] = { districtData, baseColor, city };
 			const highest = districtData.highest || 1;
-			const cities = city === "metrotaipei" ? ["taipei", "metrotaipei"] : [city];
+			const cities =
+				city === "metrotaipei" ? ["taipei", "metrotaipei"] : [city];
 			const targetCounty = city === "taipei" ? "臺北市" : null;
 
 			cities.forEach((c) => {
@@ -718,7 +728,8 @@ export const useMapStore = defineStore("map", {
 						if (targetCounty && countyName !== targetCounty) {
 							feature.properties.count = -1;
 						} else if (districtData[districtName] !== undefined) {
-							feature.properties.count = districtData[districtName];
+							feature.properties.count =
+								districtData[districtName];
 						} else {
 							feature.properties.count = -1;
 						}
@@ -1010,16 +1021,11 @@ export const useMapStore = defineStore("map", {
 				map_config.type === "fill" &&
 				this.districtFillData[map_config.index]
 			) {
-				const {
-					districtData,
-					baseColor,
-					city,
-				} = this.districtFillData[map_config.index];
+				const { districtData, baseColor, city } =
+					this.districtFillData[map_config.index];
 				const highest = districtData.highest || 1;
 				const targetCities =
-					city === "metrotaipei"
-						? ["taipei", "metrotaipei"]
-						: [city];
+					city === "metrotaipei" ? ["taipei", "metrotaipei"] : [city];
 				targetCities.forEach((c) => {
 					const expectedLayerId = `${map_config.index}-fill-${c}`;
 					if (
@@ -1042,12 +1048,7 @@ export const useMapStore = defineStore("map", {
 						this.map.setPaintProperty(
 							expectedLayerId,
 							"fill-opacity",
-							[
-								"case",
-								["<", ["get", "count"], 0],
-								0,
-								0.6,
-							],
+							["case", ["<", ["get", "count"], 0], 0, 0.6],
 						);
 					}
 				});
@@ -1208,16 +1209,16 @@ export const useMapStore = defineStore("map", {
 					const l = this.deckGlLayer[index];
 					const visible = l.config.visible !== false;
 					switch (l.type) {
-					case "ArcLayer":
-						return new ArcLayer({ ...l.config, visible });
-					case "AnimatedArcLayer":
-						return new AnimatedArcLayer({
-							...l.config,
-							visible,
-							coef: this.step / 1000,
-						});
-					default:
-						return null;
+						case "ArcLayer":
+							return new ArcLayer({ ...l.config, visible });
+						case "AnimatedArcLayer":
+							return new AnimatedArcLayer({
+								...l.config,
+								visible,
+								coef: this.step / 1000,
+							});
+						default:
+							return null;
 					}
 				})
 				.filter(Boolean);
@@ -2854,7 +2855,10 @@ export const useMapStore = defineStore("map", {
 						);
 					}
 				} else {
-					if (map_config.type === "arc" && this.deckGlLayer[mapLayerId]) {
+					if (
+						map_config.type === "arc" &&
+						this.deckGlLayer[mapLayerId]
+					) {
 						this.deckGlLayer[mapLayerId].config.data =
 							this.deckGlLayer[mapLayerId].data;
 						this.renderDeckGLLayer();
@@ -2926,7 +2930,11 @@ export const useMapStore = defineStore("map", {
 					arc.config.data = arc.data;
 					this.renderDeckGLLayer();
 				} else {
-					this.map.setLayoutProperty(mapLayerId, "visibility", "visible");
+					this.map.setLayoutProperty(
+						mapLayerId,
+						"visibility",
+						"visible",
+					);
 				}
 			});
 		},

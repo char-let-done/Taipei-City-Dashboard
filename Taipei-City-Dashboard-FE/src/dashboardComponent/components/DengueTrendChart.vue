@@ -147,23 +147,38 @@ watch(
 </script>
 
 <template>
-	<div v-if="activeChart === 'DengueTrendChart'" class="denguetrendchart">
-		<div v-if="map_filter_on" class="denguetrendchart-controls">
-			<select v-model="selectedYear" @change="handleYearChange">
-				<option value="">全部年份</option>
-				<option v-for="year in yearOptions" :key="year" :value="year">
-					{{ year }}
-				</option>
-			</select>
-		</div>
-		<VueApexCharts
-			width="100%"
-			height="260px"
-			type="area"
-			:options="chartOptions"
-			:series="localSeries"
-		/>
-	</div>
+  <div
+    v-if="activeChart === 'DengueTrendChart'"
+    class="denguetrendchart"
+  >
+    <div
+      v-if="map_filter_on"
+      class="denguetrendchart-controls"
+    >
+      <select
+        v-model="selectedYear"
+        @change="handleYearChange"
+      >
+        <option value="">
+          全部年份
+        </option>
+        <option
+          v-for="year in yearOptions"
+          :key="year"
+          :value="year"
+        >
+          {{ year }}
+        </option>
+      </select>
+    </div>
+    <VueApexCharts
+      width="100%"
+      height="260px"
+      type="area"
+      :options="chartOptions"
+      :series="localSeries"
+    />
+  </div>
 </template>
 
 <style scoped>

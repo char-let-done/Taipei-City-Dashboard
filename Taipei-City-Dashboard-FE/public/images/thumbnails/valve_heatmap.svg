@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
+  <!-- heatmap gradient blue to gray - valve -->
+  <defs>
+    <radialGradient id="valve_grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#24B0DD"/>
+      <stop offset="50%" stop-color="#7DBBD4"/>
+      <stop offset="100%" stop-color="#999999"/>
+    </radialGradient>
+  </defs>
+  <circle cx="16" cy="16" r="13" fill="url(#valve_grad)" opacity="0.8"/>
+  <circle cx="16" cy="16" r="8" fill="url(#valve_grad)" opacity="0.5"/>
+  <circle cx="16" cy="16" r="4" fill="#24B0DD" opacity="0.9"/>
+</svg>

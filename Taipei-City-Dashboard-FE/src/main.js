@@ -10,6 +10,7 @@
 
 // Import the Essentials
 import { createApp } from "vue";
+import "material-icons/iconfont/material-icons.css";
 import "./assets/styles/globalStyles.css";
 import "./assets/styles/chartStyles.css";
 import "./assets/styles/toggleswitch.css";

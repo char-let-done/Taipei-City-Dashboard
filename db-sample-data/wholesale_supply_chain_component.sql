@@ -53,7 +53,7 @@ VALUES
 (
     'supply_chain_wholesale',
     '批發市場',
-    'symbol', 'geojson', NULL, 'triangle_green',
+    'symbol', 'geojson', NULL, 'company_green',
     '{}'::json,
     '[{"key":"name","name":"市場名稱"},{"key":"type","name":"類型"},{"key":"district","name":"行政區"},{"key":"categories","name":"供貨類別"}]'::json
 ),

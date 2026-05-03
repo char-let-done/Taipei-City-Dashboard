@@ -59,7 +59,7 @@ VALUES (
     'heatmap',
     'api',
     NULL,
-    NULL,
+    'valve_heatmap',
     '{
         "heatmap-weight": [
             "interpolate",

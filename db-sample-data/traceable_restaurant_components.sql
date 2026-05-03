@@ -29,13 +29,15 @@ SET color = EXCLUDED.color,
 
 DELETE FROM public.component_maps WHERE "index" IN ('traceable_restaurant_tpe', 'traceable_restaurant_ntpc');
 
-INSERT INTO public.component_maps ("index", title, type, source, paint, property)
+INSERT INTO public.component_maps ("index", title, type, source, size, icon, paint, property)
 VALUES
 (
     'traceable_restaurant_tpe',
     '台北溯源餐廳',
     'circle',
     'geojson',
+    NULL,
+    'restaurant_blue',
     '{"circle-color":"#ef6c00","circle-radius":3,"circle-opacity":0.85,"circle-stroke-color":"#e65100","circle-stroke-width":0.5}',
     '[{"key":"name","name":"餐廳名稱"},{"key":"cuisine_type","name":"料理種類"},{"key":"star_rating","name":"星級數"},{"key":"address","name":"地址"},{"key":"tel","name":"電話"}]'
 ),
@@ -44,6 +46,8 @@ VALUES
     '新北溯源餐廳',
     'circle',
     'geojson',
+    NULL,
+    'restaurant_blue',
     '{"circle-color":"#fb8c00","circle-radius":3,"circle-opacity":0.85,"circle-stroke-color":"#ef6c00","circle-stroke-width":0.5}',
     '[{"key":"name","name":"餐廳名稱"},{"key":"cuisine_type","name":"料理種類"},{"key":"star_rating","name":"星級數"},{"key":"address","name":"地址"},{"key":"tel","name":"電話"}]'
 );
